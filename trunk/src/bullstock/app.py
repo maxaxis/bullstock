@@ -26,13 +26,30 @@ from config import configuration
 from collector import Collector
 from utils import s2d
 
-def main(*args, **kwargs):
-    collector = Collector()
-    collector.select_datasource("yahoo")
+import gtk
+from ui.main import MainWindow
 
-    print collector.get_quote("VALE5.SA")
-    print collector.get_table("VALE5.SA") #full
-    print collector.get_table("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01")) #1y
+class Application():
+    def __init__(self):
+        main_win = MainWindow()
+        main_win.show_all()
+        main_win.connect('delete-event', self.on_delete_window)
+
+    def run(self):
+        gtk.main()
+
+    def on_delete_window(self, widget, event):
+        gtk.main_quit()
+
+
+def main(*args, **kwargs):
+    app = Application()
+    app.run()
+    #collector = Collector()
+    #collector.select_datasource("yahoo")
+    #print collector.get_quote("VALE5.SA")
+    #print collector.get_table("VALE5.SA") #full
+    #print collector.get_table("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01")) #1y
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
