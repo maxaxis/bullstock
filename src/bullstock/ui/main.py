@@ -63,8 +63,9 @@ class MainWindow(gtk.Window):
         self.set_size_request (800, 480)
 
     def on_menu_grid(self, data):
-        grid = StockGridWindow ()
+        grid = StockGridWindow (self)
         grid.show_all ()
+        grid.set_size_request (500, 300)
 
     def on_menu_quit(self, data):
         None
