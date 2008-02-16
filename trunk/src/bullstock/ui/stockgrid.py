@@ -26,75 +26,110 @@ import gtk
 from gettext import gettext as _
 
 class StockGridWindow(gtk.Window):
-    def __init__(self):
+    def __init__(self, parent):
         super (StockGridWindow, self).__init__ (gtk.WINDOW_TOPLEVEL)
 
-        vbox = gtk.VBox (False, 5)
+        self.set_transient_for (parent)
+        hpaned = gtk.HPaned ()
 
-        self.grid = self.build_grid ()
+        self.portifolio = self.build_portfolio_list ()
+        scroll = gtk.ScrolledWindow (None, None)
+        scroll.set_policy (gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        scroll.add (self.portifolio)
+
+        hpaned.pack1 (scroll, True, True)
+
+        self.grid = self.build_stock_grid ()
         scroll = gtk.ScrolledWindow (None, None)
         scroll.set_policy (gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         scroll.add (self.grid)
 
-        hbox = gtk.HBox (False, 5)
-        self.wallet_combo = gtk.ComboBox()
-        hbox.pack_start (self.wallet_combo)
+        vbox = gtk.VBox (False, 5)
 
-        btn = gtk.Button ()
-        img = gtk.Image ()
-        img.set_from_stock (gtk.STOCK_EDIT, gtk.ICON_SIZE_SMALL_TOOLBAR)
-        btn.set_image (img)
-        hbox.pack_start (btn, False)
+        toolbar = self.build_stock_toolbar ()
 
-        btn = gtk.Button ()
-        img = gtk.Image ()
-        img.set_from_stock (gtk.STOCK_NEW, gtk.ICON_SIZE_SMALL_TOOLBAR)
-        btn.set_image (img)
-        hbox.pack_start (btn, False)
+        vbox.pack_start (toolbar, False)
+        vbox.pack_start (scroll, True)
 
-        btn = gtk.Button ()
-        img = gtk.Image ()
-        img.set_from_stock (gtk.STOCK_DELETE, gtk.ICON_SIZE_SMALL_TOOLBAR)
-        btn.set_image (img)
-        hbox.pack_start (btn, False)
+        hpaned.pack2 (vbox, True, True)
 
-        vbox.pack_start (hbox, False)
-        vbox.pack_start (scroll)
+        self.add (hpaned)
 
-        hbox = gtk.HBox (False, 5)
+    def build_stock_toolbar (self):
 
-        btn = gtk.Button ()
-        img = gtk.Image ()
-        img.set_from_stock (gtk.STOCK_NEW, gtk.ICON_SIZE_SMALL_TOOLBAR)
-        btn.set_image (img)
-        hbox.pack_start (btn, False)
+        toolbar = gtk.Toolbar ()
+        item = gtk.ToolButton (gtk.STOCK_REFRESH)
+        toolbar.insert (item, -1)
 
-        btn = gtk.Button ()
-        img = gtk.Image ()
-        img.set_from_stock (gtk.STOCK_DELETE, gtk.ICON_SIZE_SMALL_TOOLBAR)
-        btn.set_image (img)
-        hbox.pack_start (btn, False)
+        toolbar.insert (gtk.SeparatorToolItem(), -1)
 
-        vbox.pack_start (hbox, False)
+        item = gtk.ToolButton (gtk.STOCK_ADD)
+        toolbar.insert (item, -1)
 
-        self.add (vbox)
+        item = gtk.ToolButton (gtk.STOCK_REMOVE)
+        toolbar.insert (item, -1)
 
-    def build_grid (self):
+        return toolbar
 
-        model = gtk.ListStore (gobject.TYPE_STRING, gobject.TYPE_DOUBLE, gobject.TYPE_DOUBLE, gobject.TYPE_STRING, gobject.TYPE_DOUBLE, gobject.TYPE_DOUBLE, gobject.TYPE_STRING)
+
+    def build_portfolio_list (self):
+
+        model = gtk.ListStore (gobject.TYPE_STRING, \
+                               gobject.TYPE_STRING)
+
+        treeview = gtk.TreeView (model)
+
+        #col name
+        col = gtk.TreeViewColumn (_("Name"))
+        col.set_expand (True)
+        cell = gtk.CellRendererText ()
+        col.pack_start (cell, True)
+        col.add_attribute (cell, 'text', 1)
+        treeview.append_column (col)
+
+        #col percent
+        col = gtk.TreeViewColumn (_("Percent"))
+        col.set_min_width (100)
+        cell = gtk.CellRendererText ()
+        col.pack_start (cell, True)
+        col.add_attribute (cell, 'text', 1)
+        treeview.append_column (col)
+
+        return treeview
+
+
+
+    def build_stock_grid (self):
+
+        model = gtk.ListStore (gobject.TYPE_STRING, \
+                               gobject.TYPE_STRING, \
+                               gobject.TYPE_DOUBLE, \
+                               gobject.TYPE_DOUBLE, \
+                               gobject.TYPE_STRING, \
+                               gobject.TYPE_DOUBLE, \
+                               gobject.TYPE_DOUBLE, \
+                               gobject.TYPE_STRING)
         treeview = gtk.TreeView (model)
 
 
-        #col name
-        col = gtk.TreeViewColumn (_("Stock"))
-        col.set_min_width (150)
+        #col simbol
+        col = gtk.TreeViewColumn (_("Simbol"))
+        col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
         col.add_attribute (cell, 'text', 0)
 
-        #col value
-        col = gtk.TreeViewColumn (_("Last ($)"))
+        #col name
+        col = gtk.TreeViewColumn (_("Name"))
+        col.set_min_width (200)
+        treeview.append_column (col)
+        cell = gtk.CellRendererText ()
+        col.pack_start (cell, False)
+        col.add_attribute (cell, 'text', 1)
+
+        #col val
+        col = gtk.TreeViewColumn (_("Last"))
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
@@ -102,7 +137,7 @@ class StockGridWindow(gtk.Window):
         col.add_attribute (cell, 'text', 1)
 
         #col %
-        col = gtk.TreeViewColumn (_("Day  (%)"))
+        col = gtk.TreeViewColumn (_("Percent"))
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
@@ -142,6 +177,20 @@ class StockGridWindow(gtk.Window):
         col.add_attribute (cell, 'text', 6)
 
         return treeview
+
+    def on_toolbar_refresh (self):
+        None
+
+    def on_toolbar_add (self):
+        None
+
+    def on_toolbar_remove (self):
+        None
+
+    def on_toolbar_show_chart (self):
+        None
+
+
 
 gobject.type_register(StockGridWindow)
 
