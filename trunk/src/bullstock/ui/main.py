@@ -37,6 +37,7 @@ class MainWindow(gtk.Window):
               <menu action="Menu">
                <menu action="Stock">
                 <menuitem action="Grid"/>
+                <menuitem action="Custodia"/>
                </menu>
                <separator/>
                <menuitem action="Quit"/>
@@ -48,6 +49,7 @@ class MainWindow(gtk.Window):
             ('Menu', None, _("File")),
             ('Stock', None, _("_Stock")),
             ('Grid', gtk.STOCK_INDEX, _("Grid"), None, _("Stock Grid"), self.on_menu_grid),
+            ('Custodia', None, _("Custodia"), None, _("Custodia"), self.on_menu_grid),
             ('Quit', gtk.STOCK_QUIT, _("Quit"), None, _("Close application"), self.on_menu_quit)]
 
         ag =  gtk.ActionGroup('Actions')

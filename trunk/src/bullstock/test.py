@@ -31,9 +31,9 @@ def main(*args, **kwargs):
     collector.select_datasource("yahoo")
 
     print collector.get_quote("VALE5.SA")
-    print collector.get_quote("VALE5.SA", force=True)
-    print collector.get_table("VALE5.SA") #full
-    print collector.get_table("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01")) #1y
+#    print collector.get_quote("VALE5.SA", force=True)
+#    print collector.get_table("VALE5.SA") #full
+#    print collector.get_table("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01")) #1y
 
     collector.close()
 
