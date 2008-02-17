@@ -4,7 +4,7 @@
 # Bullstock - stock market observation and analisys tool
 #
 # Copyright (c) 2008 Osvaldo Santana Neto <osantana@gmail.com>
-#                    Luciano Wolf <luwolf@gmail.com>
+#                    Luciano Wolf <lucianomw@gmail.com>
 #                    Renato Filho <renatox@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
