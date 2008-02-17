@@ -27,14 +27,15 @@ from ConfigParser import RawConfigParser
 
 GLOBAL_CONFIG = "/etc/bullstock.cfg"
 INITIAL_CONFIG = """
-[GLOBAL]
-
 [collector]
-cache = yes
+cache = ~/bullstock.dat
 
 [datasource:yahoo]
 # symbol,last trade,trade date,trade time,change,open,open?,bid,volume
-url_quote = http://download.finance.yahoo.com/d/quotes.csv?s=%(symbol)s&f=%(format)s&e=.csv
+quote_url = http://download.finance.yahoo.com/d/quotes.csv
+quote_columns = Symbol,Last Trade,Trade Date,Trade Time,Change,Open,Open?,Bid,Volume
+quote_format = sl1d1t1c1ohgv
+quote_date_format = %m/%d/%Y
 
 # month: 00->Jan; 11->Dec
 # type: d - daily; w - weekly; m - montly; v - dividends only
@@ -56,21 +57,35 @@ class _Configuration(object):
             default.close()
 
     def _get_section(self, type_, name):
-        section = "%s:%s" % (type_, name,)
+        if type_:
+            section = "%s:%s" % (type_, name)
+        else:
+            section = name
+
+        ret = {}
+
         if not self.config.has_section(section):
-            return {}
-        return dict(self.config.items(section))
+            return ret
 
-    def plugin(self, name):
-        return self._get_section("plugin", name)
+        c = self.config
+        methods = (c.getint, c.getfloat, c.getboolean, c.get)
 
-    def datasource(self, name):
-        return self._get_section("datasource", name)
+        for option in self.config.options(section):
+            for method in methods:
+                try:
+                    ret[option] = method(section, option)
+                    break
+                except ValueError:
+                    pass
 
+        return ret
+
+    def plugin(self, plugin):
+        return self._get_section(plugin.plugin_type, plugin.name)
+
+    @property
     def collector(self):
-        if not self.config.has_section("collector"):
-            return {}
-        return dict(self.config.items("collector"))
+        return self._get_section("", "collector")
 
 configuration = _Configuration()
 

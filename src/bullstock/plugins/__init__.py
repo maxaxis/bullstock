@@ -64,8 +64,7 @@ class _Manager(object):
         return self.plugins[plugin_type][name]
 
     def get_plugins(self, plugin_type):
-        return {'yahoo': None}
-        return self.plugins[plugin_type].value()
+        return self.plugins[plugin_type]
 
 
 manager = _Manager()
