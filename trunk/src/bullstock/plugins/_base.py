@@ -20,13 +20,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-class DataSource(object):
+class Plugin(object):
+    name = "undefined"
+
+class DataSource(Plugin):
     plugin_type = "datasource"
 
-class Analysis(object):
+class Analysis(Plugin):
     plugin_type = "analysis"
 
-class Interface(object):
+class Interface(Plugin):
     plugin_type = "interface"
 
 # vim:ts=4:tw=120:sm:et:si:ai
