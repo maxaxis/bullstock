@@ -27,24 +27,24 @@ from gettext import gettext as _
 
 class StockGridWindow(gtk.Window):
     def __init__(self, parent):
-        super (StockGridWindow, self).__init__ (gtk.WINDOW_TOPLEVEL)
+        super(StockGridWindow, self).__init__ (gtk.WINDOW_TOPLEVEL)
 
-        self.set_transient_for (parent)
+        self.set_transient_for(parent)
         self.tips = gtk.Tooltips()
 
-        hpaned = gtk.HPaned ()
+        hpaned = gtk.HPaned()
 
-        vbox = gtk.VBox (False, 5)
+        vbox = gtk.VBox(False, 5)
 
-        self.portfolio = self.build_portfolio_list ()
-        scroll = gtk.ScrolledWindow (None, None)
-        scroll.set_policy (gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        scroll.add (self.portfolio)
+        self.portfolio = self.build_portfolio_list()
+        scroll = gtk.ScrolledWindow(None, None)
+        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        scroll.add(self.portfolio)
 
-        vbox.pack_start (scroll, True)
-        vbox.pack_start (self.build_portfolio_toolbar (), False)
+        vbox.pack_start(scroll, True)
+        vbox.pack_start(self.build_portfolio_toolbar (), False)
 
-        hpaned.pack1 (vbox, True, True)
+        hpaned.pack1(vbox, True, True)
 
         self.grid = self.build_stock_grid ()
         scroll = gtk.ScrolledWindow (None, None)
@@ -61,14 +61,13 @@ class StockGridWindow(gtk.Window):
         self.add (hpaned)
 
     def build_portfolio_dlg (self, id):
+        dlg = gtk.Dialog(_("Portfolio"), 
+                         self,
+                         gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                         (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
+                          gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
 
-        dlg = gtk.Dialog (_("Portfolio"), 
-                          self,
-                          gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                          (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
-                           gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
-
-        frame = gtk.Frame (_("Name"))
+        frame = gtk.Frame(_("Name"))
         frame.set_shadow_type (gtk.SHADOW_NONE)
         entry = gtk.Entry ()
         frame.add (entry)
@@ -96,26 +95,28 @@ class StockGridWindow(gtk.Window):
 
 
     def build_toolbar_button (self, stock, tip, cb=None):
-
-        item = gtk.ToolButton (stock)
-        item.set_tooltip (self.tips, tip, tip)
+        item = gtk.ToolButton(stock)
+        item.set_tooltip(self.tips, tip, tip)
         if (cb != None):
-            item.connect ('clicked', cb, None)
+            item.connect('clicked', cb, None)
 
         return item
 
     def on_new_portfolio (self, toolbutton, data):
-        dlg = self.build_portfolio_dlg (-1)
-        dlg.show_all ()
-        dlg.run ()
-        dlg.destroy ()
+        dlg = self.build_portfolio_dlg(-1)
+        dlg.show_all()
+        ret = dlg.run()
+        if ret ==  gtk.RESPONSE_ACCEPT:
+            portfolio = Portfolio(dlg.portfolio_name, dlg.portfolio_trade_cost)
+            self._add_portfolio (portfolio)
+
+        dlg.destroy()
 
     def on_remove_protfolio (self, toolbutton, data):
         None
 
     def build_portfolio_toolbar (self):
-
-        toolbar = gtk.Toolbar ()
+        toolbar = gtk.Toolbar()
 
         toolbar.insert (self.build_toolbar_button (gtk.STOCK_ADD, \
                                                    _("Add new portfolio"),\
@@ -129,17 +130,15 @@ class StockGridWindow(gtk.Window):
         return toolbar
 
     def on_new_stock (self, toolbutton, data):
-
-        store = self.grid.get_model ()
-        i = store.append ()
-        path = self.grid.get_model ().get_path (i)
-        col = self.grid.get_column (0)
+        stock = Stock (portfolio, 'GOOG')
+        i = self._add_stock (stock)
+        path = self.grid.get_model().get_path (i)
+        col = self.grid.get_column(0)
 
         self.grid.set_cursor (path, col, True)
 
 
     def on_remove_stock (self, toolbutton, data):
-
         sel = self.grid.get_selection ()
         (model, iter) = sel.get_selected ()
         model.remove (iter)
@@ -327,7 +326,22 @@ class StockGridWindow(gtk.Window):
     def on_toolbar_show_chart (self):
         None
 
+    def _add_stock(self, stock):
+        application.database.add_item(portfolio)
 
+        store = self.grid.get_model ()
+        i = store.append ()
+        store.set_value (i, 0, stock.symbol)
+
+        return i
+
+    def _add_portfolio(self, portfolio):
+        application.database.add_item(portfolio)
+
+        store = self.portfolio.get_model()
+        i = store.append()
+        store.set_value(i, 0, portfolio.name)
+        store.set_value(i, 1, '0 %')
 
 gobject.type_register(StockGridWindow)
 
