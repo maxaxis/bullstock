@@ -32,14 +32,11 @@ cache = ~/bullstock.dat
 
 [datasource:yahoo]
 # symbol,last trade,trade date,trade time,change,open,open?,bid,volume
-quote_url = http://download.finance.yahoo.com/d/quotes.csv
-quote_columns = Symbol,Last Trade,Trade Date,Trade Time,Change,Open,Open?,Bid,Volume
-quote_format = sl1d1t1c1ohgv
-quote_date_format = %m/%d/%Y
+url_quote = http://download.finance.yahoo.com/d/quotes.csv
 
 # month: 00->Jan; 11->Dec
 # type: d - daily; w - weekly; m - montly; v - dividends only
-url_table = http://ichart.finance.yahoo.com/table.csv?s=%(symbol)&a=%(start_month)&b=%(start_day)&c=%(start_year)s&d=%(end_month)&e=%(end_day)s&f=%(end_year)s&g=%(type)&ignore=.csv
+url_history = http://ichart.finance.yahoo.com/table.csv
 """
 
 class _Configuration(object):

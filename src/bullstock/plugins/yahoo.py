@@ -23,12 +23,18 @@
 import os
 import csv
 import urllib
-from copy import copy
+
+from datetime import datetime
 
 from config import configuration
 from plugins._base import DataSource
 from utils import s2d
 
+def _percent(x):
+    return float(x.strip("%"))
+
+def _isodate(x):
+    return datetime.strptime(x, "%Y-%m-%d")
 
 class Yahoo(DataSource):
     name = "yahoo" # configuration: data_source:yahoo
@@ -37,58 +43,100 @@ class Yahoo(DataSource):
         self.config = configuration.plugin(self)
 
         # defaults
-        self.quote_url = self.config.get('quote_url',
+        self.url_quote = self.config.get('url_quote',
                 'http://download.finance.yahoo.com/d/quotes.csv')
-            
-        self.url_table = self.config.get('url_table',
-                'http://ichart.finance.yahoo.com/table.csv?'\
-                's=%(symbol)&'\
-                'a=%(start_month)&'\
-                'b=%(start_day)&'\
-                'c=%(start_year)s&'\
-                'd=%(end_month)&'\
-                'e=%(end_day)s&'\
-                'f=%(end_year)s&'\
-                'g=%(type)&'\
-                'ignore=.csv')
+        self.quote_fmt = {
+            "symbol":               [ "s" , lambda x: x ],
+            "name":                 [ "n" , lambda x: x ],
+            "last_trade":           [ "l1", float ],
+            "date":                 [ "d1", lambda x: x ],
+            "time":                 [ "t1", lambda x: x ],
+            "change_points":        [ "c1", float ],
+            "change_percent":       [ "p2", _percent ],
+            "previous_close":       [ "p" , float ],
+            "open":                 [ "o" , float ],
+            "day_high":             [ "h" , float ],
+            "day_low":              [ "g" , float ],
+            "volume":               [ "v" , int ],
+            "average_daily_volume": [ "a2", int ],
+            "bid":                  [ "b" , float ],
+            "ask":                  [ "a" , float ],
+        }
 
-        try:
-            columns = self.config['quote_columns']
-            self.quote_columns = columns.split(",")
-        except KeyError:
-            self.quote_columns = ('Symbol', 'Last Trade', 'Trade Date', 'Trade Time',
-                                  'Change', 'Open', 'Open?', 'Bid', 'Volume')
-        self.quote_format = self.config.get('quote_format', 'sl1d1t1c1ohgv')
-        self.quote_date_format = self.config.get('quote_date_format', '%m/%d/%Y')
+        self.url_history = self.config.get('url_history',
+                'http://ichart.finance.yahoo.com/table.csv')
 
-        self.table_date_format = "%Y-%m-%d"
+        self.history_fmt = {
+            'Volume':    [ 'volume',    int ],
+            'Adj Close': [ 'adj_close', float ],
+            'High':      [ 'high',      float ],
+            'Low':       [ 'low',       float ],
+            'Date':      [ 'date',      _isodate ],
+            'Close':     [ 'close',     float ],
+            'Open':      [ 'open',      float ],
+        }
 
-
-    def _normalize_data(self, data_dic):
-        ret = copy(data_dic)
-        for k, v in ret.items():
-            try:
-                ret[k] = float(ret[k])
-            except ValueError:
-                try:
-                    ret[k] = s2d(ret[k], self.quote_date_format)
-                except ValueError:
-                    pass
-        return ret
 
     def get_quote(self, symbol):
+        format = ''.join(x[0] for x in self.quote_fmt.values())
         query = {
             'e': '.csv',
             's': symbol,
-            'f': self.quote_format,
+            'f': format,
         }
-        url = "%s?%s" % (self.quote_url, urllib.urlencode(query))
+        url = "%s?%s" % (self.url_quote, urllib.urlencode(query))
 
         page = urllib.urlopen(url)
-        quote = csv.DictReader(page, self.quote_columns, dialect='excel').next()
+        quote = csv.DictReader(page, self.quote_fmt.keys(), dialect='excel').next()
         page.close()
 
-        return self._normalize_data(quote)
+        for k, v in quote.items():
+            quote[k] = self.quote_fmt[k][1](v)
+
+        quote['timestamp'] = datetime.strptime("%s %s" % (quote['date'], quote['time']),
+                "%m/%d/%Y %I:%M%p")
+        return quote
+
+
+    def _normalize_record(self, record):
+        ret = {}
+        for k, v in record.items():
+            ret[self.history_fmt[k][0]] = self.history_fmt[k][1](v)
+        return ret
+
+    def get_history(self, symbol, start, end, interval):
+        ret = {}
+
+        query = {
+                's': symbol,
+                'g': interval,
+                'ignore': '.csv',
+        }
+
+        if start:
+            query['a'] = start.month
+            query['b'] = start.day
+            query['c'] = start.year
+
+        if end:
+            query['a'] = end.month
+            query['b'] = end.day
+            query['c'] = end.year
+
+
+        url = "%s?%s" % (self.url_history, urllib.urlencode(query))
+        page = urllib.urlopen(url)
+        history = csv.DictReader(page, dialect='excel')
+
+        for line in history:
+            record = self._normalize_record(line)
+            ret[record['date']] = record
+
+        page.close()
+
+        return ret
+
+
 
 plugin = Yahoo()
 

@@ -44,19 +44,25 @@ class Collector(object):
         self.current = self.datasources[name]
 
     def _cached_data(self, symbol, data):
-        if symbol in self.cache:
-            if data in self.cache[symbol]:
-                return self.cache[symbol][data]
-        else:
+        if symbol not in self.cache:
             self.cache[symbol] = {}
+            self.cache.sync()
+
+        if data not in self.cache[symbol]:
+            symbol_cache = self.cache[symbol]
+            symbol_cache[data] = {}
+            self.cache[symbol] = symbol_cache
+            self.cache.sync()
+
+        return self.cache[symbol][data]
 
     def get_quote(self, symbol, force=False):
-        quote = None
+        quote = {}
 
-        if not force:
+        if self.cache is not None:
             quote = self._cached_data(symbol, 'quote')
 
-        if not quote:
+        if force or not quote:
             quote = self.current.get_quote(symbol)
 
             # shelve do not write changes in mutable objects
@@ -71,8 +77,21 @@ class Collector(object):
 
         return quote
 
-    def get_table(self, symbol, start=None, end=None, interval='d', force=False):
-        pass
+    def get_history(self, symbol, start=None, end=None, interval='d', force=False):
+        # FIXME: Cache doesn't work.
+        key = "%s %s %s %s" % (symbol, start, end, interval)
+
+        if self.cache is not None:
+            history_cache = self._cached_data(symbol, 'history')
+            history = history_cache.get(key, {})
+
+        if force or not history:
+            history.update(self.current.get_history(symbol, start, end, interval))
+
+            self.cache[symbol]['history'][key] = history
+            self.cache.sync()
+
+        return history
 
 
 # vim:ts=4:tw=120:sm:et:si:ai
