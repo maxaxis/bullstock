@@ -20,46 +20,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
+from storm.locals import *
+from db.dbitem import DBItem
+from db.stock import Stock
 
-from config import configuration
-from collector import Collector
-from utils import s2d
+class StockTransaction (DBItem):
+    __storm_table__ = 'stock_transaction'
+    stock_id = Int()
+    stock = Reference(stock_id, Stock.id)
 
-import gtk
-from ui.main import MainWindow
-from db.database import Database
+    type = Int()
+    amount = Int()
+    value = Float()
+    trade_cost = Float()
 
-class Application():
-    collector = None
-    db = None
-
-    def __init__(self):
-
-        #init collector
-        collector = Collector()
-        collector.select_datasource('yahoo')
-
-        #init databse
-        db = Database('stock.db')
-        db.create()
-
-        main_win = MainWindow()
-        main_win.show_all()
-        main_win.connect('delete-event', self.on_delete_window)
-
-    def run(self):
-        gtk.main()
-
-    def on_delete_window(self, widget, event):
-        gtk.main_quit()
-
-application = Application()
-
-def main(*args, **kwargs):
-    application.run()
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))
-
-# vim:ts=4:tw=120:sm:et:si:ai
+    def __init__(self, type, symbol, amount, value, trade_cost):
+        self.type = type
+        self.symbol = symbol
+        self.amount = amount
+        self.value = value
+        self.trade_cost = trade_cost
