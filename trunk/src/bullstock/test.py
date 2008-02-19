@@ -26,14 +26,16 @@ from config import configuration
 from collector import Collector
 from utils import s2d
 
+import pprint
+
 def main(*args, **kwargs):
     collector = Collector()
     collector.select_datasource("yahoo")
 
-    print collector.get_quote("VALE5.SA")
-#    print collector.get_quote("VALE5.SA", force=True)
-#    print collector.get_table("VALE5.SA") #full
-#    print collector.get_table("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01")) #1y
+    pprint.pprint(collector.get_quote("VALE5.SA"))
+    pprint.pprint(collector.get_quote("VALE5.SA", force=True))
+    pprint.pprint(collector.get_history("VALE5.SA")) #full
+    pprint.pprint(collector.get_history("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01"), force=True)) #1y
 
     collector.close()
 
