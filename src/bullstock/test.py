@@ -21,23 +21,25 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-
-from config import configuration
-from collector import Collector
-from utils import s2d
-
 import pprint
 
+from config import configuration
+from database import storage
+
+from collector import Collector
+
 def main(*args, **kwargs):
-    collector = Collector()
-    collector.select_datasource("yahoo")
+    pass
 
-    pprint.pprint(collector.get_quote("VALE5.SA"))
-    pprint.pprint(collector.get_quote("VALE5.SA", force=True))
-    pprint.pprint(collector.get_history("VALE5.SA")) #full
-    pprint.pprint(collector.get_history("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01"), force=True)) #1y
-
-    collector.close()
+#    collector = Collector()
+#    collector.select_datasource("yahoo")
+#
+#    pprint.pprint(collector.get_quote("VALE5.SA"))
+#    pprint.pprint(collector.get_quote("VALE5.SA", force=True))
+#    pprint.pprint(collector.get_history("VALE5.SA")) #full
+#    pprint.pprint(collector.get_history("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01"), force=True)) #1y
+#
+#    collector.close()
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

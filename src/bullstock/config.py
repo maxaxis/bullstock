@@ -27,24 +27,24 @@ from ConfigParser import RawConfigParser
 
 GLOBAL_CONFIG = "/etc/bullstock.cfg"
 INITIAL_CONFIG = """
-[collector]
-cache = ~/bullstock.dat
+[GLOBAL]
+database = bullstock.db
 
 [datasource:yahoo]
-# symbol,last trade,trade date,trade time,change,open,open?,bid,volume
+# month: 00->Jan; 11->Dec type: d-daily; w-weekly; m-montly; v-dividends only
 url_quote = http://download.finance.yahoo.com/d/quotes.csv
-
-# month: 00->Jan; 11->Dec
-# type: d - daily; w - weekly; m - montly; v - dividends only
 url_history = http://ichart.finance.yahoo.com/table.csv
 """
 
 class _Configuration(object):
     def __init__(self):
-        self.config = RawConfigParser()
+        self.conf_dir = os.path.expanduser("~/.bullstock")
+        if not os.path.exists(self.conf_dir):
+            os.mkdir(self.conf_dir)
 
+        self.config = RawConfigParser()
         read = self.config.read([
-            os.path.expanduser("~/.bullstock.cfg"),
+            os.path.join(self.conf_dir, "config.ini"),
             GLOBAL_CONFIG,
         ])
 
@@ -83,6 +83,10 @@ class _Configuration(object):
     @property
     def collector(self):
         return self._get_section("", "collector")
+
+    @property
+    def global(self):
+        return self._get_section("", "GLOBAL")
 
 configuration = _Configuration()
 

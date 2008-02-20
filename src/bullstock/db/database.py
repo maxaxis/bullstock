@@ -21,56 +21,110 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import gobject
 import os.path
 from storm.locals import *
 
-from db.portfolio import Portfolio
-from db.stock import Stock
-from db.transaction import StockTransaction
-
+from config import configuration
 
 class Database (object):
-    file_name = None
-    db = None
-    store = None
+    def __init__(self):
 
-    def __init__(self, file_name):
-        self.file_name = file_name
+        self.filename = os.path.join(
+            configuration.conf_dir,
+            configuration.global.get("database", "bullstock.db")
+        )
 
-    def create (self):
-        dir = os.path.join (os.path.expanduser('~'), '.bullstock/')
-        if not os.path.exists(dir):
-            os.mkdir(dir)
+        db_exists = os.path.exists(self.filename)
+        self.db = create_database("sqlite:%s" % (self.filename,))
+        if not db_exists:
+            self._create_tables()
 
-        path = os.path.join(dir, self.file_name)
-        new_db = not os.path.exists(path)
-        print path
-        self.db = create_database("sqlite:" + path)
         self.store = Store(self.db)
 
-        if new_db:
-            print 'Initialize Database: %s' % path
-            self._build_db()
+    def _create_tables(self):
+        print 'Initialize Database: %s' % path
+
+        # Please, update the datamodel before change the tables:
+        # http://code.google.com/p/bullstock/wiki/DatabaseStructure
+
+        # transactions
+        self.store.execute("""
+            CREATE TABLE transactions (
+                id INTEGER PRIMARY KEY,
+                symbol_id INTEGER,
+                portfolio_id INTEGER,
+                type VARCHAR,
+                amount INT,
+                value REAL,
+                trade_cost REAL
+            )""", noresult=True)
+
+        # financial_info
+        self.store.execute("""
+            CREATE TABLE financial_info (
+                id INTEGER PRIMARY KEY,
+                company_id INTEGER,
+                timestamp VARCHAR,
+                description VARCHAR,
+                data VARCHAR,
+                type VARCHAR,
+            )""", noresult=True)
+
+        # portfolio
+        self.store.execute("""
+            CREATE TABLE portfolio (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR,
+                preferred_datasource VARCHAR,
+                preferred_currency VARCHAR,
+                transaction_cost REAL
+            )""", noresult=True)
+
+        # symbol
+        self.store.execute("""
+            CREATE TABLE stock (
+                id INTEGER PRIMARY KEY,
+                company_id INTEGER,
+                portfolio_id INTEGER,
+                name VARCHAR,
+                description VARCHAR,
+                datasource VARCHAR,
+                currency VARCHAR
+            )""", noresult=True)
+
+        # company
+        self.store.execute("""
+            CREATE TABLE company (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR
+            )""", noresult=True)
+
+        # history
+        self.store.execute("""
+            CREATE TABLE history (
+                id INTEGER PRIMARY KEY,
+                symbol_id INTEGER,
+                timestamp VARCHAR,
+                open REAL,
+                high REAL,
+                low REAL,
+                volume INTEGER,
+                type VARCHAR
+            )""", noresult=True)
+
+        # transaction
+        self.store.execute("""
+            CREATE TABLE stock_transaction (
+                id INTEGER PRIMARY KEY,
+                stock_id INTEGER,
+                type INTEGER,
+                amount INTEGER,
+                value REAL,
+                trade_cost REAL
+            )""", noresult=True)
 
     def add_item(self, dbitem):
         self.store.add(dbitem)
         self.store.commit()
 
-    def _build_db (self):
-
-        #portfolio
-        self.store.execute("CREATE TABLE portfolio "
-                           "(id INTEGER PRIMARY KEY, name VARCHAR, trade_cost REAL)",
-                            noresult=True)
-
-        #stock
-        self.store.execute("CREATE TABLE stock "
-                           "(id INTEGER PRIMARY KEY, portfolio_id INTEGER, symbol VARCHAR)",
-                           noresult=True)
-
-        #transaction
-        self.store.execute("CREATE TABLE stock_transaction "
-                           "(id INTEGER PRIMARY KEY, stock_id INTEGER, type INTEGER, amount INTEGER, value REAL, trade_cost REAL)",
-                           noresult=True)
 
