@@ -85,7 +85,7 @@ class _Configuration(object):
         return self._get_section("", "collector")
 
     @property
-    def global(self):
+    def global_conf(self):
         return self._get_section("", "GLOBAL")
 
 configuration = _Configuration()

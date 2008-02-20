@@ -26,23 +26,24 @@ from storm.locals import *
 
 from config import configuration
 
-class Database (object):
+class _DatabaseStorage(object):
     def __init__(self):
 
         self.filename = os.path.join(
             configuration.conf_dir,
-            configuration.global.get("database", "bullstock.db")
+            configuration.global_conf.get("database", "bullstock.db")
         )
 
         db_exists = os.path.exists(self.filename)
         self.db = create_database("sqlite:%s" % (self.filename,))
+        self.store = Store(self.db)
+
         if not db_exists:
             self._create_tables()
 
-        self.store = Store(self.db)
 
     def _create_tables(self):
-        print 'Initialize Database: %s' % path
+        print 'Initialize Database: %s' % (self.filename,)
 
         # Please, update the datamodel before change the tables:
         # http://code.google.com/p/bullstock/wiki/DatabaseStructure
@@ -59,15 +60,15 @@ class Database (object):
                 trade_cost REAL
             )""", noresult=True)
 
-        # financial_info
+        # financialinfo
         self.store.execute("""
-            CREATE TABLE financial_info (
+            CREATE TABLE financialinfo (
                 id INTEGER PRIMARY KEY,
                 company_id INTEGER,
                 timestamp VARCHAR,
                 description VARCHAR,
                 data VARCHAR,
-                type VARCHAR,
+                type VARCHAR
             )""", noresult=True)
 
         # portfolio
@@ -78,6 +79,13 @@ class Database (object):
                 preferred_datasource VARCHAR,
                 preferred_currency VARCHAR,
                 transaction_cost REAL
+            )""", noresult=True)
+
+        # portfolio-symbol (n-to-m relationship)
+        self.store.execute("""
+            CREATE TABLE portfolio_symbol (
+                portfolio_id INTEGER,
+                symbol_id INTEGER
             )""", noresult=True)
 
         # symbol
@@ -128,3 +136,4 @@ class Database (object):
         self.store.commit()
 
 
+storage = _DatabaseStorage()
