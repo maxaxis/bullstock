@@ -2,19 +2,19 @@
 
 {{{
 
-                                                     +-----------------+
-                                                     | FinancialInfo   |
-                                                     +-----------------+
-                                                     | id              |
-                                                     | (FK) company_id |
-                                                     | timestamp       |
-                                                     | description     |
-                                                     | data            |
-                                                     | type            |
-                                                     +-----------------+
-                                                              |N
-                                                              |
-                                                              |1
++---------------------+                              +-----------------+
+| Transactions        |                              | FinancialInfo   |
++---------------------+                              +-----------------+
+| id                  |                              | id              |
+| (FK) symbol_id      |                              | (FK) company_id |
+| (FK) portifolio_id  |N                             | timestamp       |
+| type                |----------------              | description     |
+| amount              |               |              | data            |
+| value               |               |              | type            |
+| trade_cost          |               |              +-----------------+
++---------------------+               |                        |N
+          |N                          |                        |
+          |1                          | 1                      |1
 +-----------------------+     +--------------------+     +---------+
 | Portifolio            |     | Symbol             |     | Company |
 +-----------------------+N   N+--------------------+N   1+---------+
@@ -22,8 +22,8 @@
 | name                  |     | name               |     | name    |
 | preferred_datasource  |     | description        |     | country |        
 | preferred_currency    |     | datasource         |     +---------+
-+-----------------------+     | currency           |
-                              | (FK) company_id    |
+| transaction_costs     |     | currency           |
++-----------------------+     | (FK) company_id    |
                               | (FK) portifolio_id |
                               +--------------------+
                                        1|
@@ -46,7 +46,11 @@
 }}}
 
 == Dictionary ==
-
+  * Transactions
+    * type - char - 'b': buy, 'v': sell
+    * amount - int - Amount of symbol 
+    * value - real - symbol value
+    * trade_cost - real - cost of the trade
   * History
     * timestamp - datetime - Timestamp
     * open - real - Open value (price)
