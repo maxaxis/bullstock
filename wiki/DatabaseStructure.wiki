@@ -1,0 +1,62 @@
+= Database Structure =
+
+{{{
+
+                                                     +-----------------+
+                                                     | FinancialInfo   |
+                                                     +-----------------+
+                                                     | id              |
+                                                     | (FK) company_id |
+                                                     | timestamp       |
+                                                     | description     |
+                                                     | data            |
+                                                     | type            |
+                                                     +-----------------+
+                                                              |N
+                                                              |
+                                                              |1
++-----------------------+     +--------------------+     +---------+
+| Portifolio            |     | Symbol             |     | Company |
++-----------------------+N   N+--------------------+N   1+---------+
+| id                    |-----| id                 |-----| id      |              
+| name                  |     | name               |     | name    |
+| preferred_datasource  |     | description        |     | country |        
+| preferred_currency    |     | datasource         |     +---------+
++-----------------------+     | currency           |
+                              | (FK) company_id    |
+                              | (FK) portifolio_id |
+                              +--------------------+
+                                       1|
+                                        |
+                                       N|
+                                +----------------+
+                                | History        |
+                                +----------------+
+                                | id             |
+                                | (FK) symbol_id |
+                                | timestamp      |
+                                | open           |
+                                | close          | 
+                                | high           |
+                                | low            |
+                                | volume         |
+                                | type           |
+                                +----------------+
+
+}}}
+
+== Dictionary ==
+
+  * History
+    * timestamp - datetime - Timestamp
+    * open - real - Open value (price)
+    * close - real - Close value (price)
+    * high - real - Highest value (price)
+    * low - real - Lowest value (price)
+    * volume - int - Volume
+    * type - char - 'q': quote, 'd': dividend
+  * !FinancialInfo (for fundamentalist analysis)
+    * timestamp - datetime - Timestamp
+    * description - str - Information description
+    * data - str - the value of information
+    * type - char - type of information 'r': real, 's': str, 'd': date, 't': time, ...
