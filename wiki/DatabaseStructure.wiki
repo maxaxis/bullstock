@@ -12,7 +12,7 @@
   | amount            |                  |           | data            |
   | value             |                  |           | type            |
   | trade_cost        |                  |           +-----------------+
-  +-------------------+                  |                    |N
+  +-------------------+                  |                   |N
             |N                           |                   |
             |                            |                   |
             |1                           |1                  |1
@@ -21,8 +21,8 @@
 +-----------------------+N   N+-------------------+N   1+---------+
 | id                    |-----| id                |-----| id      |              
 | name                  |     | (FK) company_id   |     | name    |
-| preferred_datasource  |     | (FK) portfolio_id |     | country |        
-| preferred_currency    |     | name              |     +---------+
+| preferred_datasource  |     | (FK) portfolio_id |     +---------+
+| preferred_currency    |     | name              |
 | transaction_costs     |     | description       |
 +-----------------------+     | datasource        |
                               | currency          |
