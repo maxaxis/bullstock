@@ -8,12 +8,13 @@
 | id                  |                              | id              |
 | (FK) symbol_id      |                              | (FK) company_id |
 | (FK) portifolio_id  |N                             | timestamp       |
-| type                |----------------              | description     |
+| type                |---------------+              | description     |
 | amount              |               |              | data            |
 | value               |               |              | type            |
 | trade_cost          |               |              +-----------------+
 +---------------------+               |                        |N
           |N                          |                        |
+          |                           |                        |
           |1                          | 1                      |1
 +-----------------------+     +--------------------+     +---------+
 | Portifolio            |     | Symbol             |     | Company |
