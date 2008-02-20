@@ -49,7 +49,7 @@
 == Dictionary ==
 
   * Transactions
-    * type - char - 'b': buy, 'v': sell
+    * type - char - 'B': buy, 'S': sell
     * amount - int - Amount of symbol 
     * value - real - symbol value
     * trade_cost - real - cost of the trade
