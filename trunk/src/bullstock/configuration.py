@@ -39,14 +39,12 @@ url_history = http://ichart.finance.yahoo.com/table.csv
 class _Configuration(object):
     def __init__(self):
         self.conf_dir = os.path.expanduser("~/.bullstock")
+        self.user_conf = os.path.join(self.conf_dir, "config.ini")
         if not os.path.exists(self.conf_dir):
             os.mkdir(self.conf_dir)
 
         self.config = RawConfigParser()
-        read = self.config.read([
-            os.path.join(self.conf_dir, "config.ini"),
-            GLOBAL_CONFIG,
-        ])
+        read = self.config.read([self.user_conf, GLOBAL_CONFIG])
 
         if not read:
             default = StringIO(INITIAL_CONFIG)
@@ -77,6 +75,15 @@ class _Configuration(object):
 
         return ret
 
+    def set(self, section, option, value):
+        self.config.set(section, option, value)
+        self.save()
+
+    def save(self):
+        f = open(self.user_conf, "w")
+        self.config.write(f)
+        f.close()
+
     def plugin(self, plugin):
         return self._get_section(plugin.plugin_type, plugin.name)
 
@@ -88,7 +95,7 @@ class _Configuration(object):
     def global_conf(self):
         return self._get_section("", "GLOBAL")
 
-configuration = _Configuration()
+config = _Configuration()
 
 # vim:ts=4:tw=120:sm:et:si:ai
 

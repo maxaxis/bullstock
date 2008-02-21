@@ -24,14 +24,14 @@
 import os.path
 from storm.locals import *
 
-from config import configuration
+from configuration import config
 
-class _DatabaseStorage(object):
+class _Database(object):
     def __init__(self):
 
         self.filename = os.path.join(
-            configuration.conf_dir,
-            configuration.global_conf.get("database", "bullstock.db")
+            config.conf_dir,
+            config.global_conf.get("database", "bullstock.db")
         )
 
         db_exists = os.path.exists(self.filename)
@@ -48,16 +48,16 @@ class _DatabaseStorage(object):
         # Please, update the datamodel before change the tables:
         # http://code.google.com/p/bullstock/wiki/DatabaseStructure
 
-        # transactions
+        # transaction
         self.store.execute("""
-            CREATE TABLE transactions (
+            CREATE TABLE transaction (
                 id INTEGER PRIMARY KEY,
                 symbol_id INTEGER,
                 portfolio_id INTEGER,
-                type VARCHAR,
+                type TEXT,
                 amount INT,
-                value REAL,
-                trade_cost REAL
+                value TEXT,
+                trade_cost TEXT
             )""", noresult=True)
 
         # financialinfo
@@ -65,20 +65,20 @@ class _DatabaseStorage(object):
             CREATE TABLE financialinfo (
                 id INTEGER PRIMARY KEY,
                 company_id INTEGER,
-                timestamp VARCHAR,
-                description VARCHAR,
-                data VARCHAR,
-                type VARCHAR
+                timestamp TEXT,
+                description TEXT,
+                data TEXT,
+                type TEXT
             )""", noresult=True)
 
         # portfolio
         self.store.execute("""
             CREATE TABLE portfolio (
                 id INTEGER PRIMARY KEY,
-                name VARCHAR,
-                preferred_datasource VARCHAR,
-                preferred_currency VARCHAR,
-                transaction_cost REAL
+                name TEXT,
+                preferred_datasource TEXT,
+                preferred_currency TEXT,
+                transaction_cost TEXT
             )""", noresult=True)
 
         # portfolio-symbol (n-to-m relationship)
@@ -94,17 +94,17 @@ class _DatabaseStorage(object):
                 id INTEGER PRIMARY KEY,
                 company_id INTEGER,
                 portfolio_id INTEGER,
-                name VARCHAR,
-                description VARCHAR,
-                datasource VARCHAR,
-                currency VARCHAR
+                name TEXT,
+                description TEXT,
+                datasource TEXT,
+                currency TEXT
             )""", noresult=True)
 
         # company
         self.store.execute("""
             CREATE TABLE company (
                 id INTEGER PRIMARY KEY,
-                name VARCHAR
+                name TEXT
             )""", noresult=True)
 
         # history
@@ -112,12 +112,12 @@ class _DatabaseStorage(object):
             CREATE TABLE history (
                 id INTEGER PRIMARY KEY,
                 symbol_id INTEGER,
-                timestamp VARCHAR,
-                open REAL,
-                high REAL,
-                low REAL,
+                timestamp TEXT,
+                open TEXT,
+                high TEXT,
+                low TEXT,
                 volume INTEGER,
-                type VARCHAR
+                type TEXT
             )""", noresult=True)
 
         # transaction
@@ -127,8 +127,8 @@ class _DatabaseStorage(object):
                 stock_id INTEGER,
                 type INTEGER,
                 amount INTEGER,
-                value REAL,
-                trade_cost REAL
+                value TEXT,
+                trade_cost TEXT
             )""", noresult=True)
 
     def add_item(self, dbitem):
@@ -136,4 +136,4 @@ class _DatabaseStorage(object):
         self.store.commit()
 
 
-storage = _DatabaseStorage()
+db = _Database()

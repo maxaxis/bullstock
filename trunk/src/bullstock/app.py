@@ -22,13 +22,13 @@
 
 import sys
 
-from config import configuration
+from configuration import config
 from collector import Collector
 from utils import s2d
 
 import gtk
 from ui.main import MainWindow
-from db.database import Database
+from database import db
 
 class Application():
     collector = None
