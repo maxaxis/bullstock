@@ -48,9 +48,9 @@ class _Database(object):
         # Please, update the datamodel before change the tables:
         # http://code.google.com/p/bullstock/wiki/DatabaseStructure
 
-        # transaction
+        # stocktransaction
         self.store.execute("""
-            CREATE TABLE transaction (
+            CREATE TABLE stocktransaction (
                 id INTEGER PRIMARY KEY,
                 symbol_id INTEGER,
                 portfolio_id INTEGER,
@@ -76,8 +76,6 @@ class _Database(object):
             CREATE TABLE portfolio (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
-                preferred_datasource TEXT,
-                preferred_currency TEXT,
                 transaction_cost TEXT
             )""", noresult=True)
 
@@ -90,14 +88,13 @@ class _Database(object):
 
         # symbol
         self.store.execute("""
-            CREATE TABLE stock (
+            CREATE TABLE symbol (
                 id INTEGER PRIMARY KEY,
                 company_id INTEGER,
                 portfolio_id INTEGER,
                 name TEXT,
                 description TEXT,
-                datasource TEXT,
-                currency TEXT
+                datasource TEXT
             )""", noresult=True)
 
         # company
@@ -116,24 +113,17 @@ class _Database(object):
                 open TEXT,
                 high TEXT,
                 low TEXT,
+                close TEXT,
                 volume INTEGER,
                 type TEXT
             )""", noresult=True)
 
-        # transaction
-        self.store.execute("""
-            CREATE TABLE stock_transaction (
-                id INTEGER PRIMARY KEY,
-                stock_id INTEGER,
-                type INTEGER,
-                amount INTEGER,
-                value TEXT,
-                trade_cost TEXT
-            )""", noresult=True)
-
-    def add_item(self, dbitem):
-        self.store.add(dbitem)
+    def add(self, item):
+        self.store.add(item)
         self.store.commit()
 
 
 db = _Database()
+
+
+# vim:ts=4:tw=120:sm:et:si:ai

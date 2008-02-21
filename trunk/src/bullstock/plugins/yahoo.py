@@ -28,7 +28,6 @@ from datetime import datetime
 
 from configuration import config
 from plugins._base import DataSource
-from utils import s2d
 
 def _percent(x):
     return float(x.strip("%"))

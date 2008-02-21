@@ -88,10 +88,6 @@ class _Configuration(object):
         return self._get_section(plugin.plugin_type, plugin.name)
 
     @property
-    def collector(self):
-        return self._get_section("", "collector")
-
-    @property
     def global_conf(self):
         return self._get_section("", "GLOBAL")
 
