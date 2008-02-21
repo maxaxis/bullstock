@@ -21,9 +21,9 @@
 +-----------------------+N   N+-------------------+N   1+---------+
 | id                    |-----| id                |-----| id      |              
 | name                  |     | (FK) company_id   |     | name    |
-| preferred_datasource  |     | (FK) portfolio_id |     +---------+
-| transaction_costs     |     | name              |
-+-----------------------+     | description       |
+| transaction_costs     |     | (FK) portfolio_id |     +---------+
++-----------------------+     | name              |
+                              | description       |
                               | datasource        |
                               +-------------------+
                                        1|
