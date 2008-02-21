@@ -23,26 +23,43 @@
 import sys
 import pprint
 
+from decimal import Decimal as Dec
+
 from configuration import config
 from database import db
 
-from collector import Collector
-from model import Portfolio
+from model import Portfolio, Symbol, Company
 
 def main(*args, **kwargs):
+    portfolio1 = Portfolio(u"Main Portfolio", Dec("0.10"))
+    db.store.add(portfolio1)
+    portfolio2 = Portfolio(u"Secondary Portfolio")
+    db.store.add(portfolio2)
 
+    symbol1 = Symbol(u"VALE5.SA", u"yahoo")
+    db.store.add(symbol1)
+    symbol2 = Symbol(u"PETR4.SA", u"yahoo")
+    db.store.add(symbol2)
+    symbol3 = Symbol(u"GGBR4.SA", u"yahoo", u"Gerdau PN")
+    db.store.add(symbol3)
+    symbol4 = Symbol(u"PETR3.SA", u"yahoo")
+    db.store.add(symbol4)
 
-    pass
+    portfolio1.symbols.add(symbol1)
+    portfolio1.symbols.add(symbol2)
+    portfolio2.symbols.add(symbol2)
+    portfolio2.symbols.add(symbol3)
 
-#    collector = Collector()
-#    collector.select_datasource("yahoo")
-#
-#    pprint.pprint(collector.get_quote("VALE5.SA"))
-#    pprint.pprint(collector.get_quote("VALE5.SA", force=True))
-#    pprint.pprint(collector.get_history("VALE5.SA")) #full
-#    pprint.pprint(collector.get_history("VALE5.SA", start=s2d("2007-01-01"), end=s2d("2008-01-01"), force=True)) #1y
-#
-#    collector.close()
+    db.store.commit()
+
+    print "%s: %s" % (portfolio1.name, list(portfolio1.symbols))
+    print "%s: %s" % (portfolio2.name, list(portfolio2.symbols))
+    print
+    print symbol1.name
+    
+    company = db.store.find(Company, Company.name == u"PETROBRAS")[0]
+    print "%s: %s" % (company.name, list(company.symbols))
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

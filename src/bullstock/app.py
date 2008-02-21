@@ -21,29 +21,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
+import gtk
 
 from configuration import config
-from collector import Collector
-from utils import s2d
-
-import gtk
-from ui.main import MainWindow
+from collector import collect
 from database import db
 
+from ui.main import MainWindow
+
 class Application():
-    collector = None
-    db = None
-
     def __init__(self):
-
-        #init collector
-        collector = Collector()
-        collector.select_datasource('yahoo')
-
-        #init databse
-        db = Database('stock.db')
-        db.create()
-
         main_win = MainWindow()
         main_win.show_all()
         main_win.connect('delete-event', self.on_delete_window)
