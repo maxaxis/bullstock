@@ -23,12 +23,15 @@
 import sys
 import pprint
 
-from config import configuration
-from database import storage
+from configuration import config
+from database import db
 
 from collector import Collector
+from model import Portfolio
 
 def main(*args, **kwargs):
+
+
     pass
 
 #    collector = Collector()

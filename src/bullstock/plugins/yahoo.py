@@ -26,7 +26,7 @@ import urllib
 
 from datetime import datetime
 
-from config import configuration
+from configuration import config
 from plugins._base import DataSource
 from utils import s2d
 
@@ -40,7 +40,7 @@ class Yahoo(DataSource):
     name = "yahoo" # configuration: data_source:yahoo
 
     def __init__(self):
-        self.config = configuration.plugin(self)
+        self.config = config.plugin(self)
 
         # defaults
         self.url_quote = self.config.get('url_quote',

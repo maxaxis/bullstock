@@ -24,7 +24,7 @@ import os
 import shelve
 
 from plugins import manager
-from config import configuration
+from configuration import config
 
 class Collector(object):
     def __init__(self):
