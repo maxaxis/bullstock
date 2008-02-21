@@ -22,10 +22,9 @@
 | id                    |-----| id                |-----| id      |              
 | name                  |     | (FK) company_id   |     | name    |
 | preferred_datasource  |     | (FK) portfolio_id |     +---------+
-| preferred_currency    |     | name              |
-| transaction_costs     |     | description       |
-+-----------------------+     | datasource        |
-                              | currency          |
+| transaction_costs     |     | name              |
++-----------------------+     | description       |
+                              | datasource        |
                               +-------------------+
                                        1|
                                         |
@@ -40,6 +39,7 @@
                                 | close          | 
                                 | high           |
                                 | low            |
+                                | close          |
                                 | volume         |
                                 | type           |
                                 +----------------+
