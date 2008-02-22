@@ -59,10 +59,9 @@ def main(*args, **kwargs):
     symbol1 = db.store.find(Symbol).order_by(Symbol.name).first()
     print symbol1.name
     print symbol1.quote
-   
+
     company = db.store.find(Company, Company.name == u"PETROBRAS")[0]
     print "%s: %s" % (company.name, list(company.symbols))
- 
 
     print list(symbol1.get_history(start=datetime(2008,01,01), type=u'w'))
 
