@@ -21,6 +21,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+from datetime import timedelta
 
 from storm.locals import *
 
@@ -93,7 +94,7 @@ class Symbol(Storm):
         self.name = name
         self.datasource = datasource
 
-        full_name = unicode(self._get_company_description().strip())
+        full_name = unicode(self.quote['name'])
         striped_name = unicode(re.sub(" +-[A-Z]*$", "", full_name).strip())
         companies = list(db.store.find(
             Company,
@@ -113,13 +114,56 @@ class Symbol(Storm):
     def __repr__(self):
         return "<Symbol '%s'>" % (self.name,)
 
-    def _get_company_description(self):
-        return collect.get_quote(self.datasource, self.name)['name']
-
     @property
     def quote(self):
-        pass
+        return collect.get_quote(self.datasource, self.name)
 
+    def get_history(self, start=None, end=None, type=u'd'):
+        self.refresh_history(type)
+
+        query = [
+            History,
+            History.symbol == self,
+            History.type == type,
+        ]
+
+        if start is not None:
+            query.append(History.timestamp >= start)
+
+        if end is not None:
+            query.append(History.timestamp <= end)
+
+        return db.store.find(*query).order_by(History.timestamp)
+
+
+    def refresh_history(self, type=u'd'):
+        last_record = db.store.find(
+            History,
+            History.symbol == self,
+            History.type == type
+        ).order_by(
+            Desc(History.timestamp)
+        ).first()
+
+        if not last_record:
+            start = None
+        else:
+            start = last_record.timestamp + timedelta(1)
+
+        update = collect.get_history(self.datasource, self.name, start=start, type=type)
+        for row in update:
+            db.store.add(History(
+                self,
+                row['date'],
+                row['open'],
+                row['high'],
+                row['low'],
+                row['close'],
+                row['volume'],
+                type
+            ))
+
+        db.store.commit()
 
 class PortfolioSymbol(Storm):
     __storm_table__ = "portfolio_symbol"
@@ -155,12 +199,13 @@ class History(Storm):
     low = Decimal()
     close = Decimal()
     volume = Int()
-    type = Unicode()
+    type = Unicode() # d/w/m
     # FK
     symbol_id = Int()
     symbol = Reference(symbol_id, "Symbol.id")
 
-    def __init__(self, timestamp, open, high, low, close, volume, type):
+    def __init__(self, symbol, timestamp, open, high, low, close, volume, type):
+        self.symbol = symbol
         self.timestamp = timestamp
         self.open = open
         self.high = high
@@ -169,5 +214,15 @@ class History(Storm):
         self.volume = volume
         self.type = type
 
+    def __repr__(self):
+        return "<History '%s' %s % 7.2f-% 7.2f-% 7.2f-% 7.2f-%10d>" % (
+            self.type,
+            self.timestamp.strftime("%Y-%m-%d"),
+            self.open,
+            self.high,
+            self.low,
+            self.close,
+            self.volume,
+        )
 
 # vim:ts=4:tw=120:sm:et:si:ai
