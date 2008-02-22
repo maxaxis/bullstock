@@ -24,7 +24,6 @@ import sys
 import gtk
 
 from configuration import config
-from collector import collect
 from database import db
 
 from ui.main import MainWindow
@@ -41,9 +40,8 @@ class Application():
     def on_delete_window(self, widget, event):
         gtk.main_quit()
 
-application = Application()
-
 def main(*args, **kwargs):
+    application = Application()
     application.run()
 
 if __name__ == "__main__":

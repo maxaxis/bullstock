@@ -22,8 +22,12 @@
 
 import gobject
 import gtk
-from collector import Collector
+import pango
+from decimal import Decimal as Dec
 from gettext import gettext as _
+
+from database import db
+from model import Portfolio, Symbol, Company
 
 class StockGridWindow(gtk.Window):
     def __init__(self, parent):
@@ -31,36 +35,49 @@ class StockGridWindow(gtk.Window):
 
         self.set_transient_for(parent)
         self.tips = gtk.Tooltips()
+        self.selected_portfolio = None
 
         hpaned = gtk.HPaned()
+        hpaned.set_position(35)
 
         vbox = gtk.VBox(False, 5)
 
-        self.portfolio = self.build_portfolio_list()
+        self.portfolio = self._build_portfolio_list()
+        self.portfolio.get_selection().connect('changed',
+                                               self._on_portfolio_changed)
         scroll = gtk.ScrolledWindow(None, None)
         scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         scroll.add(self.portfolio)
+        self._load_portfolios()
 
         vbox.pack_start(scroll, True)
-        vbox.pack_start(self.build_portfolio_toolbar (), False)
+        vbox.pack_start(self._build_portfolio_toolbar (), False)
 
         hpaned.pack1(vbox, True, True)
 
-        self.grid = self.build_stock_grid ()
+        self.grid = self._build_symbol_grid ()
         scroll = gtk.ScrolledWindow (None, None)
         scroll.set_policy (gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         scroll.add (self.grid)
 
         vbox = gtk.VBox (False, 5)
 
-        vbox.pack_start (self.build_stock_toolbar (), False)
+        vbox.pack_start (self._build_symbol_toolbar (), False)
         vbox.pack_start (scroll, True)
 
         hpaned.pack2 (vbox, True, True)
 
         self.add (hpaned)
 
-    def build_portfolio_dlg (self, id):
+    def _on_portfolio_changed(self, treeselection):
+        (model, iter) = treeselection.get_selected()
+        if iter:
+            id = model.get_value(iter, 0)
+            self.selected_portfolio = db.store.get(Portfolio, id)
+            if self.selected_portfolio:
+                self._load_symbols(self.selected_portfolio)
+
+    def _build_portfolio_dlg (self, id):
         dlg = gtk.Dialog(_("Portfolio"), 
                          self,
                          gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
@@ -72,18 +89,21 @@ class StockGridWindow(gtk.Window):
         entry = gtk.Entry ()
         frame.add (entry)
         dlg.vbox.pack_start (frame, False)
+        dlg.portfolio_name = entry
 
         frame = gtk.Frame (_("Description"))
         frame.set_shadow_type (gtk.SHADOW_NONE)
         entry = gtk.Entry ()
         frame.add (entry)
         dlg.vbox.pack_start (frame, False)
+        dlg.portfolio_description = entry
 
         frame = gtk.Frame (_("Trade Costs"))
         frame.set_shadow_type (gtk.SHADOW_NONE)
         entry = gtk.SpinButton (None, 0.1, 2)
         frame.add (entry)
         dlg.vbox.pack_start (frame, False)
+        dlg.portfolio_trade_cost = entry
 
         dlg.set_resizable (False)
         if (id != -1):
@@ -94,80 +114,105 @@ class StockGridWindow(gtk.Window):
         return dlg
 
 
-    def build_toolbar_button (self, stock, tip, cb=None):
-        item = gtk.ToolButton(stock)
+    def _build_toolbar_button (self, symbol, tip, cb=None):
+        item = gtk.ToolButton(symbol)
         item.set_tooltip(self.tips, tip, tip)
         if (cb != None):
             item.connect('clicked', cb, None)
 
         return item
 
-    def on_new_portfolio (self, toolbutton, data):
-        dlg = self.build_portfolio_dlg(-1)
+    def _on_new_portfolio (self, toolbutton, data):
+        dlg = self._build_portfolio_dlg(-1)
         dlg.show_all()
         ret = dlg.run()
         if ret ==  gtk.RESPONSE_ACCEPT:
-            portfolio = Portfolio(dlg.portfolio_name, dlg.portfolio_trade_cost)
-            self._add_portfolio (portfolio)
+            portfolio = Portfolio(unicode(dlg.portfolio_name.get_text()),
+                                  Dec(str(dlg.portfolio_trade_cost.get_value())))
+            db.store.add(portfolio)
+            db.store.commit()
+            self._append_portfolio (portfolio)
 
         dlg.destroy()
 
-    def on_remove_protfolio (self, toolbutton, data):
-        None
+    def _on_remove_protfolio (self, toolbutton, data):
+        sel = self.portfolio.get_selection()
+        if sel:
+            (model, iter) = sel.get_selected ()
+            id = model.get_value(iter, 0)
+            p = db.store.get(Portfolio, id)
+            if p:
+                db.store.remove(p)
+                db.store.commit()
+            model.remove(iter)
 
-    def build_portfolio_toolbar (self):
+
+
+    def _build_portfolio_toolbar (self):
         toolbar = gtk.Toolbar()
 
-        toolbar.insert (self.build_toolbar_button (gtk.STOCK_ADD, \
-                                                   _("Add new portfolio"),\
-                                                   self.on_new_portfolio), \
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_ADD,
+                                                   _("Add new portfolio"),
+                                                   self._on_new_portfolio),
                         -1)
-        toolbar.insert (self.build_toolbar_button (gtk.STOCK_REMOVE, \
-                                                   _("Remove selected portfolio"), \
-                                                   self.on_remove_protfolio),
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REMOVE,
+                                                   _("Remove selected portfolio"),
+                                                   self._on_remove_protfolio),
                         -1)
 
         return toolbar
 
-    def on_new_stock (self, toolbutton, data):
-        stock = Stock (portfolio, 'GOOG')
-        i = self._add_stock (stock)
-        path = self.grid.get_model().get_path (i)
-        col = self.grid.get_column(0)
+    def _on_new_symbol (self, toolbutton, data):
+        if self.selected_portfolio:
+            symbol = Symbol (u'GOOG', u'yahoo')
+            db.store.add(symbol)
+            self.selected_portfolio.symbols.add(symbol)
+            db.store.commit()
 
-        self.grid.set_cursor (path, col, True)
+            i = self._append_symbol (symbol)
+
+            # start edit cell
+            path = self.grid.get_model().get_path (i)
+            col = self.grid.get_column(0)
+            self.grid.set_cursor (path, col, True)
 
 
-    def on_remove_stock (self, toolbutton, data):
+    def _on_remove_symbol (self, toolbutton, data):
         sel = self.grid.get_selection ()
         (model, iter) = sel.get_selected ()
-        model.remove (iter)
 
+        if iter:
+            id = model.get_value(iter, 0)
+            s = db.store.get(Symbol, id)
+            if id:
+                db.store.remove(p)
+                db.store.commit()
+            model.remove(iter)
 
-    def build_stock_toolbar (self):
+    def _build_symbol_toolbar (self):
 
         toolbar = gtk.Toolbar ()
 
-        toolbar.insert (self.build_toolbar_button (gtk.STOCK_REFRESH, 
-                                                   _("Refresh stock values"),
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REFRESH, 
+                                                   _("Refresh symbol values"),
                                                    None),
                         -1)
-        toolbar.insert (self.build_toolbar_button (gtk.STOCK_PREFERENCES, 
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_PREFERENCES, 
                                                    _("Configure portfolio"),
                                                    None),
                         -1)
         toolbar.insert (gtk.SeparatorToolItem(), -1)
-        toolbar.insert (self.build_toolbar_button (gtk.STOCK_ADD, 
-                                                   _("Add new Stock"),
-                                                   self.on_new_stock),
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_ADD, 
+                                                   _("Add new Symbol"),
+                                                   self._on_new_symbol),
                         -1)
-        toolbar.insert (self.build_toolbar_button (gtk.STOCK_REMOVE, 
-                                                   _("Remove selected Stock"),
-                                                   self.on_remove_stock),
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REMOVE, 
+                                                   _("Remove selected Symbol"),
+                                                   self._on_remove_symbol),
                         -1)
         toolbar.insert (gtk.SeparatorToolItem(), -1)
-        toolbar.insert (self.build_toolbar_button (gtk.STOCK_REDO, _("Sell selected Stock")), -1)
-        toolbar.insert (self.build_toolbar_button (gtk.STOCK_UNDO, _("Buy selected Stock")), -1)
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REDO, _("Sell selected Symbol")), -1)
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_UNDO, _("Buy selected Symbol")), -1)
         toolbar.insert (gtk.SeparatorToolItem(), -1)
 
         item = gtk.ToolButton ()
@@ -177,9 +222,10 @@ class StockGridWindow(gtk.Window):
         return toolbar
 
 
-    def build_portfolio_list (self):
+    def _build_portfolio_list (self):
 
-        model = gtk.ListStore (gobject.TYPE_STRING, \
+        model = gtk.ListStore (gobject.TYPE_INT,
+                               gobject.TYPE_STRING,
                                gobject.TYPE_STRING)
 
         treeview = gtk.TreeView (model)
@@ -194,54 +240,54 @@ class StockGridWindow(gtk.Window):
 
         #col percent
         col = gtk.TreeViewColumn (_("Percent"))
-        col.set_min_width (100)
+        col.set_alignment(1.0)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, True)
-        col.add_attribute (cell, 'text', 1)
-        treeview.append_column (col)
+        col.pack_start(cell, True)
+        cell.set_property('alignment', pango.ALIGN_RIGHT)
+        col.add_attribute(cell, 'text', 2)
+        treeview.append_column(col)
 
         return treeview
 
-    def refresh_item (self, iter, symbol = None):
+    def _refresh_item (self, i, symbol):
 
-        store = self.grid.get_model ()
+        q = symbol.quote
+        if q:
+            symbol.description  = unicode(q['name'])
+            store = self.grid.get_model ()
+            store.set_value (i, 0, symbol.id)
+            store.set_value (i, 1, symbol.name)
+            store.set_value (i, 2, symbol.description)
+            store.set_value (i, 3, q['last_trade'])
+            store.set_value (i, 4, q['change_percent'])
+            store.set_value (i, 5, 0.0)
+            store.set_value (i, 6, q['bid'])
+            store.set_value (i, 7, q['ask'])
+            store.set_value (i, 8, 0.0)
 
-        if (symbol):
-            store.set (iter, 0, symbol.upper ())
-        else:
-            symbol = store.get_value (iter, 0)
-
-        #TODO: use global collector
-        collector = Collector ()
-        collector.select_datasource ("yahoo")
-
-        quote = collector.get_quote (symbol)
-
-        store.set_value (iter, 1, quote['Symbol'])
-        store.set_value (iter, 2, quote['Bid'])
-        store.set_value (iter, 3, quote['Change'])
-
-        collector.close ()
-
-
-
-    def on_cell_simbol_edited (self, cellrenderertext, path, new_text, data):
+    def _on_cell_simbol_edited (self, cellrenderertext, path, new_text, data):
 
         store = self.grid.get_model ()
         i = store.get_iter (path)
         if i:
-            self.refresh_item (i, new_text.upper ())
+            id = store.get_value(i, 0)
+            symbol = db.store.get(Symbol, id)
+            if symbol:
+               symbol.name = unicode(new_text.upper())
+               self._refresh_item (i, symbol)
+               db.store.commit()
 
 
-    def build_stock_grid (self):
+    def _build_symbol_grid (self):
 
-        model = gtk.ListStore (gobject.TYPE_STRING, \
-                               gobject.TYPE_STRING, \
-                               gobject.TYPE_DOUBLE, \
-                               gobject.TYPE_DOUBLE, \
-                               gobject.TYPE_STRING, \
-                               gobject.TYPE_DOUBLE, \
-                               gobject.TYPE_DOUBLE, \
+        model = gtk.ListStore (gobject.TYPE_INT,
+                               gobject.TYPE_STRING,
+                               gobject.TYPE_STRING,
+                               gobject.TYPE_DOUBLE,
+                               gobject.TYPE_DOUBLE,
+                               gobject.TYPE_STRING,
+                               gobject.TYPE_DOUBLE,
+                               gobject.TYPE_DOUBLE,
                                gobject.TYPE_STRING)
         treeview = gtk.TreeView (model)
 
@@ -253,8 +299,8 @@ class StockGridWindow(gtk.Window):
         cell = gtk.CellRendererText ()
         cell.set_property ('editable', True)
         col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 0)
-        cell.connect ('edited', self.on_cell_simbol_edited, None)
+        col.add_attribute (cell, 'text', 1)
+        cell.connect ('edited', self._on_cell_simbol_edited, None)
 
         #col name
         col = gtk.TreeViewColumn (_("Name"))
@@ -262,7 +308,7 @@ class StockGridWindow(gtk.Window):
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 1)
+        col.add_attribute (cell, 'text', 2)
 
         #col val
         col = gtk.TreeViewColumn (_("Last"))
@@ -270,7 +316,7 @@ class StockGridWindow(gtk.Window):
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 2)
+        col.add_attribute (cell, 'text', 3)
 
         #col %
         col = gtk.TreeViewColumn (_("Percent"))
@@ -278,7 +324,7 @@ class StockGridWindow(gtk.Window):
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 3)
+        col.add_attribute (cell, 'text', 4)
 
         #col Buy Amount
         col = gtk.TreeViewColumn (_("Buy Amount"))
@@ -286,7 +332,7 @@ class StockGridWindow(gtk.Window):
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 4)
+        col.add_attribute (cell, 'text', 5)
 
         #col Buy Value
         col = gtk.TreeViewColumn (_("Buy Value"))
@@ -294,7 +340,7 @@ class StockGridWindow(gtk.Window):
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 5)
+        col.add_attribute (cell, 'text', 6)
 
         #col Sell Value
         col = gtk.TreeViewColumn (_("Sell Value"))
@@ -302,7 +348,7 @@ class StockGridWindow(gtk.Window):
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 6)
+        col.add_attribute (cell, 'text', 7)
 
         #col Sell Amount
         col = gtk.TreeViewColumn (_("Sell Amount"))
@@ -310,38 +356,50 @@ class StockGridWindow(gtk.Window):
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 7)
+        col.add_attribute (cell, 'text', 8)
 
         return treeview
 
-    def on_toolbar_refresh (self):
+    def _on_toolbar_refresh (self):
         None
 
-    def on_toolbar_add (self):
+    def _on_toolbar_add (self):
         None
 
-    def on_toolbar_remove (self):
+    def _on_toolbar_remove (self):
         None
 
-    def on_toolbar_show_chart (self):
+    def _on_toolbar_show_chart (self):
         None
 
-    def _add_stock(self, stock):
-        application.database.add_item(portfolio)
-
+    def _append_symbol(self, symbol):
         store = self.grid.get_model ()
         i = store.append ()
-        store.set_value (i, 0, stock.symbol)
+        store.set_value (i, 0, symbol.id)
+        store.set_value (i, 1, symbol.name)
+        store.set_value (i, 2, symbol.description)
 
         return i
 
-    def _add_portfolio(self, portfolio):
-        application.database.add_item(portfolio)
-
+    def _append_portfolio(self, portfolio):
         store = self.portfolio.get_model()
         i = store.append()
-        store.set_value(i, 0, portfolio.name)
-        store.set_value(i, 1, '0 %')
+        store.set_value(i, 0, portfolio.id)
+        store.set_value(i, 1, portfolio.name)
+        store.set_value(i, 2, '0 %')
+
+        return i
+
+    def _load_symbols(self, portfolio):
+        self.grid.get_model().clear()
+        for s in portfolio.symbols:
+            i = self._append_symbol(s)
+            self._refresh_item (i, s)
+
+    def _load_portfolios(self):
+        self.portfolio.get_model().clear()
+        for p in db.store.find(Portfolio):
+            self._append_portfolio(p)
 
 gobject.type_register(StockGridWindow)
 

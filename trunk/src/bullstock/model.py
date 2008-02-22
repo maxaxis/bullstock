@@ -76,7 +76,6 @@ class Portfolio(Storm):
         self.name = name
         self.transaction_cost = transaction_cost
 
-
 class Symbol(Storm):
     __storm_table__ = "symbol"
 
@@ -87,8 +86,6 @@ class Symbol(Storm):
     # FK
     company_id = Int()
     company = Reference(company_id, "Company.id")
-    portfolio_id = Int()
-    portfolio = Reference(portfolio_id, "Portfolio.id")
 
     def __init__(self, name, datasource, description=u""):
         self.name = name
