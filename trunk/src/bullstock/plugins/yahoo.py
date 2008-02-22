@@ -25,12 +25,14 @@ import csv
 import urllib
 
 from datetime import datetime
+from decimal import Decimal
 
 from configuration import config
+
 from plugins._base import DataSource
 
 def _percent(x):
-    return float(x.strip("%"))
+    return Decimal(x.strip("%"))
 
 def _isodate(x):
     return datetime.strptime(x, "%Y-%m-%d")
@@ -47,32 +49,32 @@ class Yahoo(DataSource):
         self.quote_fmt = {
             "symbol":               [ "s" , lambda x: x ],
             "name":                 [ "n" , lambda x: x ],
-            "last_trade":           [ "l1", float ],
+            "last_trade":           [ "l1", Decimal ],
             "date":                 [ "d1", lambda x: x ],
             "time":                 [ "t1", lambda x: x ],
-            "change_points":        [ "c1", float ],
+            "change_points":        [ "c1", Decimal ],
             "change_percent":       [ "p2", _percent ],
-            "previous_close":       [ "p" , float ],
-            "open":                 [ "o" , float ],
-            "day_high":             [ "h" , float ],
-            "day_low":              [ "g" , float ],
+            "previous_close":       [ "p" , Decimal ],
+            "open":                 [ "o" , Decimal ],
+            "day_high":             [ "h" , Decimal ],
+            "day_low":              [ "g" , Decimal ],
             "volume":               [ "v" , int ],
             "average_daily_volume": [ "a2", int ],
-            "bid":                  [ "b" , float ],
-            "ask":                  [ "a" , float ],
+            "bid":                  [ "b" , Decimal ],
+            "ask":                  [ "a" , Decimal ],
         }
 
         self.url_history = self.config.get('url_history',
                 'http://ichart.finance.yahoo.com/table.csv')
 
         self.history_fmt = {
-            'Volume':    [ 'volume',    int ],
-            'Adj Close': [ 'adj_close', float ],
-            'High':      [ 'high',      float ],
-            'Low':       [ 'low',       float ],
             'Date':      [ 'date',      _isodate ],
-            'Close':     [ 'close',     float ],
-            'Open':      [ 'open',      float ],
+            'Open':      [ 'open',      Decimal ],
+            'High':      [ 'high',      Decimal ],
+            'Low':       [ 'low',       Decimal ],
+            'Close':     [ 'close',     Decimal ],
+            'Adj Close': [ 'adj_close', Decimal ],
+            'Volume':    [ 'volume',    int ],
         }
 
 
@@ -90,7 +92,7 @@ class Yahoo(DataSource):
         page.close()
 
         for k, v in quote.items():
-            quote[k] = self.quote_fmt[k][1](v)
+            quote[k] = self.quote_fmt[k][1](v.strip())
 
         quote['timestamp'] = datetime.strptime("%s %s" % (quote['date'], quote['time']),
                 "%m/%d/%Y %I:%M%p")
@@ -103,14 +105,16 @@ class Yahoo(DataSource):
             ret[self.history_fmt[k][0]] = self.history_fmt[k][1](v)
         return ret
 
-    def get_history(self, symbol, start, end, interval):
-        ret = {}
+    def get_history(self, symbol, start, end, type):
+        ret = []
 
         query = {
                 's': symbol,
-                'g': interval,
                 'ignore': '.csv',
         }
+
+        if type in 'dwm':
+            query['g'] = type
 
         if start:
             query['a'] = start.month
@@ -125,16 +129,19 @@ class Yahoo(DataSource):
 
         url = "%s?%s" % (self.url_history, urllib.urlencode(query))
         page = urllib.urlopen(url)
+
+        if page.headers['Content-Type'] != "text/csv":
+            page.close()
+            return ret
+
         history = csv.DictReader(page, dialect='excel')
 
         for line in history:
-            record = self._normalize_record(line)
-            ret[record['date']] = record
+            ret.append(self._normalize_record(line))
 
         page.close()
 
         return ret
-
 
 
 plugin = Yahoo()

@@ -29,8 +29,8 @@ class _Collector(object):
     def get_quote(self, datasource, symbol):
         return self.datasources[datasource].get_quote(symbol)
 
-    def get_history(self, datasource, symbol, start=None, end=None, interval='d'):
-        return self.datasources[datasource].get_history(symbol, start, end, interval)
+    def get_history(self, datasource, symbol, start=None, end=None, type='d'):
+        return self.datasources[datasource].get_history(symbol, start, end, type)
 
 collect = _Collector()
 
