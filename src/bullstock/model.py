@@ -91,6 +91,9 @@ class Symbol(Storm):
         self.name = name
         self.datasource = datasource
 
+        q = self.quote
+        print q
+
         full_name = unicode(self.quote['name'])
         striped_name = unicode(re.sub(" +-[A-Z]*$", "", full_name).strip())
         companies = list(db.store.find(
@@ -113,6 +116,9 @@ class Symbol(Storm):
 
     @property
     def quote(self):
+        return collect.get_quote(self.datasource, self.name)
+
+    def get_quote(self):
         return collect.get_quote(self.datasource, self.name)
 
     def get_history(self, start=None, end=None, type=u'd'):
