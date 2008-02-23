@@ -31,11 +31,14 @@ from gettext import gettext as _
 
 from database import db
 from model import Portfolio, Symbol, Company
+from collector import collect
 
 class _SymbolMonitor(Thread):
     class SymbolData:
         def __init__(self, symbol, cb, data):
             self.symbol = symbol
+            self.symbol_name = symbol.name
+            self.datasource = symbol.datasource
             self.cb = cb
             self.data = data
 
@@ -61,6 +64,7 @@ class _SymbolMonitor(Thread):
         self.running = False
         self.cond.acquire()
         self.cond.notifyAll()
+        self.cond.release()
         self.join()
 
         if self.timeout_id:
@@ -98,13 +102,15 @@ class _SymbolMonitor(Thread):
         self.cond.acquire()
         while self.running:
             for sd in self.symbols:
-                q = sd.symbol.quote
-                gobject.idle_add(self._idle_emit_signal, sd, q)
-                if not self.running:
+                q = collect.get_quote(sd.datasource, sd.symbol_name)
+                if self.running:
+                    gobject.idle_add(self._idle_emit_signal, sd, q)
+                else:
                     break
 
             self.idle_id = gobject.idle_add(self.sleep_function)
-            self.timeout_id = gobject.timeout_add(1000 * self.timeout, self._timeout_cb)
+            if self.running:
+                self.timeout_id = gobject.timeout_add(1000 * self.timeout, self._timeout_cb)
             self.cond.wait()
 
     def _timeout_cb(self):
@@ -174,7 +180,6 @@ class StockGridWindow(gtk.Window):
 
     def _on_delete_event(self, widget, event):
         self.symbol_monitor.stop()
-        self.symbol_monitor.join()
 
     def _on_portfolio_changed(self, treeselection):
         (model, iter) = treeselection.get_selected()
@@ -363,21 +368,24 @@ class StockGridWindow(gtk.Window):
         if q:
             symbol.description  = unicode(q['name'])
             store = self.grid.get_model ()
-            store.set_value (i, 0, symbol.id)
-            store.set_value (i, 1, symbol.name)
-            store.set_value (i, 2, symbol.description)
-            store.set_value (i, 3, q['last_trade'])
-            store.set_value (i, 4, q['change_percent'])
-            store.set_value (i, 5, 0.0)
-            store.set_value (i, 6, q['bid'])
-            store.set_value (i, 7, q['ask'])
-            store.set_value (i, 8, 0.0)
+            if store:
+                store.set_value (i, 1, symbol.name)
+                store.set_value (i, 2, symbol.description)
+                store.set_value (i, 3, q['last_trade'])
+                store.set_value (i, 4, q['change_percent'])
+                store.set_value (i, 5, 0.0)
+                store.set_value (i, 6, q['bid'])
+                store.set_value (i, 7, q['ask'])
+                store.set_value (i, 8, 0.0)
 
     def _refresh_item (self, i, symbol):
+        print 'call refresh %s' % symbol.name
+        store = self.grid.get_model ()
+        store.set_value (i, 1, symbol.name)
         self.symbol_monitor.append(symbol, self._symbol_updated, i)
 
     def _on_cell_simbol_edited (self, cellrenderertext, path, new_text, data):
-
+        print 'Edited'
         store = self.grid.get_model ()
         i = store.get_iter (path)
         if i:
@@ -385,8 +393,8 @@ class StockGridWindow(gtk.Window):
             symbol = db.store.get(Symbol, id)
             if symbol:
                symbol.name = unicode(new_text.upper())
-               self._refresh_item (i, symbol)
                db.store.commit()
+               self._refresh_item (i, symbol)
 
 
     def _build_symbol_grid (self):
@@ -521,7 +529,7 @@ class StockGridWindow(gtk.Window):
             self._append_portfolio(p)
 
     def _hide_statusbar(self):
-        print 'Hide progressbar'
+        print 'HIDE status'
         self.progressbar.hide_all()
 
 gobject.type_register(StockGridWindow)
