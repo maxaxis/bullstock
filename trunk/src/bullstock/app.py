@@ -41,6 +41,7 @@ class Application():
         gtk.main_quit()
 
 def main(*args, **kwargs):
+    gtk.gdk.threads_init()
     application = Application()
     application.run()
 
