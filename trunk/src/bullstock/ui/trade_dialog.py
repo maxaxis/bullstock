@@ -22,15 +22,18 @@
 
 import gobject
 import gtk
+from datetime import datetime
+from decimal import Decimal as Dec
 from gettext import gettext as _
 
-from model import Symbol
+from model import Symbol, Trade
 
 class TradeDialog(gtk.Dialog):
-    def __init__(self, parent, symbol=None, type='B', shared=0, cost=0.0):
+    def __init__(self, parent, portfolio, symbol, type='B', price=0.0, amount=0):
         super (TradeDialog, self).__init__ (_('Trade'), parent)
         hbox = gtk.HBox(False, 5)
         self.set_resizable(False)
+        self.potfolio = portfolio
 
         self.calendar = gtk.Calendar()
         hbox.pack_start(self.calendar, False)
@@ -43,6 +46,7 @@ class TradeDialog(gtk.Dialog):
         hline = gtk.HBox(True, 5)
 
         self.symbol_entry = gtk.Entry()
+        self.symbol_entry.set_sensitive(False)
         frame = self._create_frame('<b>Symbol</b>', self.symbol_entry)
 
         hline.pack_start(frame)
@@ -61,6 +65,7 @@ class TradeDialog(gtk.Dialog):
         self.price_entry = gtk.SpinButton(None, 0.0, 2)
         self.price_entry.set_increments(0.5, 1.0)
         self.price_entry.set_range(0.0, 100000.0)
+        self.price_entry.set_value(price)
         self.price_entry.connect('changed', self._values_changed)
         frame = self._create_frame('<b>Price</b>', self.price_entry)
 
@@ -69,7 +74,7 @@ class TradeDialog(gtk.Dialog):
         self.number_entry = gtk.SpinButton()
         self.number_entry.set_increments(1.0, 10.0)
         self.number_entry.set_range(0.0, 100000.0)
-        self.number_entry.set_value(shared)
+        self.number_entry.set_value(amount)
         self.number_entry.connect('changed', self._values_changed)
         frame = self._create_frame('<b>Number of shares</b>', self.number_entry)
 
@@ -82,7 +87,7 @@ class TradeDialog(gtk.Dialog):
         self.cost_entry = gtk.SpinButton(None, 0.0, 2)
         self.cost_entry.set_increments(0.5, 1.0)
         self.cost_entry.set_range(0.0, 100000.0)
-        self.cost_entry.set_value(cost)
+        self.cost_entry.set_value(float(portfolio.transaction_cost))
         self.cost_entry.connect('changed', self._values_changed)
         frame = self._create_frame('<b>Trade Cost</b>', self.cost_entry)
 
@@ -125,6 +130,33 @@ class TradeDialog(gtk.Dialog):
 
     def get_symbol(self):
         return self.symbol
+
+    def valid(self):
+        if self.get_transaction_type() == 'B':
+            return True
+        if self.get_transaction_type() == 'S':
+            if self.symbol.amount >= self.number_entry.get_value():
+                return True
+            else:
+                msg = gtk.MessageDialog(self,
+                                        gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                                        gtk.MESSAGE_INFO,
+                                        gtk.BUTTONS_CLOSE,
+                                        _('Current amount is not avalible to sell.'))
+                msg.show_all()
+                msg.run()
+                msg.destroy()
+
+        return False
+
+    def get_trade_object(self):
+        return Trade(unicode(self.get_transaction_type()),
+                     self.symbol,
+                     self.portfolio,
+                     self.number_entry.get_value(),
+                     Dec(str(self.price_entry.get_value())),
+                     Dec(str(self.cost_entry.get_value())),
+                     datetime(self.calendar.get_date()))
 
     def _update_sum(self):
         price = self.price_entry.get_value()

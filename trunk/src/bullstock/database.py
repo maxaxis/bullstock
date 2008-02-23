@@ -48,16 +48,17 @@ class _Database(object):
         # Please, update the datamodel before change the tables:
         # http://code.google.com/p/bullstock/wiki/DatabaseStructure
 
-        # stocktransaction
+        # trade
         self.store.execute("""
-            CREATE TABLE stocktransaction (
+            CREATE TABLE trade (
                 id INTEGER PRIMARY KEY,
                 symbol_id INTEGER,
                 portfolio_id INTEGER,
                 type TEXT,
                 amount INT,
                 value TEXT,
-                trade_cost TEXT
+                trade_cost TEXT,
+                trade_date TEXT
             )""", noresult=True)
 
         # financialinfo
@@ -92,6 +93,7 @@ class _Database(object):
                 id INTEGER PRIMARY KEY,
                 company_id INTEGER,
                 portfolio_id INTEGER,
+                amount INTEGER,
                 name TEXT,
                 description TEXT,
                 datasource TEXT
@@ -117,6 +119,8 @@ class _Database(object):
                 volume INTEGER,
                 type TEXT
             )""", noresult=True)
+
+        self.store.commit()
 
     def add(self, item):
         self.store.add(item)
