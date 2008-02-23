@@ -25,17 +25,21 @@ import csv
 import urllib
 
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from configuration import config
 
 from plugins._base import DataSource
 
-def _percent(x):
-    return Decimal(x.strip("%"))
-
 def _isodate(x):
     return datetime.strptime(x, "%Y-%m-%d")
+
+def _safe_decimal(x):
+    try:
+        return Decimal(x.strip("%"))
+    except InvalidOperation, e:
+        return None
+
 
 class Yahoo(DataSource):
     name = "yahoo" # configuration: data_source:yahoo
@@ -49,19 +53,19 @@ class Yahoo(DataSource):
         self.quote_fmt = {
             "symbol":               [ "s" , lambda x: x ],
             "name":                 [ "n" , lambda x: x ],
-            "last_trade":           [ "l1", Decimal ],
+            "last_trade":           [ "l1", _safe_decimal ],
             "date":                 [ "d1", lambda x: x ],
             "time":                 [ "t1", lambda x: x ],
-            "change_points":        [ "c1", Decimal ],
-            "change_percent":       [ "p2", _percent ],
-            "previous_close":       [ "p" , Decimal ],
-            "open":                 [ "o" , Decimal ],
-            "day_high":             [ "h" , Decimal ],
-            "day_low":              [ "g" , Decimal ],
+            "change_points":        [ "c1", _safe_decimal ],
+            "change_percent":       [ "p2", _safe_decimal ],
+            "previous_close":       [ "p" , _safe_decimal ],
+            "open":                 [ "o" , _safe_decimal ],
+            "day_high":             [ "h" , _safe_decimal ],
+            "day_low":              [ "g" , _safe_decimal ],
             "volume":               [ "v" , int ],
             "average_daily_volume": [ "a2", int ],
-            "bid":                  [ "b" , Decimal ],
-            "ask":                  [ "a" , Decimal ],
+            "bid":                  [ "b" , _safe_decimal ],
+            "ask":                  [ "a" , _safe_decimal ],
         }
 
         self.url_history = self.config.get('url_history',
