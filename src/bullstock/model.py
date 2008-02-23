@@ -21,32 +21,36 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from storm.locals import *
 
 from collector import collect
 from database import db
 
-class StockTransaction(Storm):
-    __storm_table__ = "stocktransaction"
+class Trade(Storm):
+    __storm_table__ = "trade"
 
     id = Int(primary=True)
     type = Unicode()
     amount = Int()
     value = Decimal()
     trade_cost = Decimal()
+    trade_date = DateTime()
     # FK
     symbol_id = Int()
     symbol = Reference(symbol_id, "Symbol.id")
     portfolio_id = Int()
     portfolio = Reference(portfolio_id, "Portfolio.id")
 
-    def __init__(self, type, amount, value, trade_cost):
+    def __init__(self, type, symbol, portfolio, amount, value, trade_cost, date=datetime.today()):
         self.type = type
         self.amount = amount
         self.value = value
         self.trade_cost = trade_cost
+        self.symbol = symbol
+        self.portfolio = portfolio
+        self.trade_date = date
 
 
 class FinancialInfo(Storm):
@@ -83,12 +87,14 @@ class Symbol(Storm):
     name = Unicode()
     description = Unicode()
     datasource = Unicode()
+    amount = Int()
     # FK
     company_id = Int()
     company = Reference(company_id, "Company.id")
 
     def __init__(self, name, datasource, description=u""):
         self.name = name
+        self.amount = 0
         self.datasource = datasource
 
         q = self.quote

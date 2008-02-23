@@ -30,7 +30,7 @@ from decimal import Decimal as Dec
 from gettext import gettext as _
 
 from database import db
-from model import Portfolio, Symbol, Company
+from model import Portfolio, Symbol, Company, Trade
 from collector import collect
 from ui.trade_dialog import TradeDialog
 
@@ -180,7 +180,8 @@ class StockGridWindow(gtk.Window):
         self.connect('delete-event', self._on_delete_event)
 
     def _on_delete_event(self, widget, event):
-        self.symbol_monitor.stop()
+        if self.symbol_monitor:
+            self.symbol_monitor.stop()
 
     def _on_portfolio_changed(self, treeselection):
         (model, iter) = treeselection.get_selected()
@@ -292,47 +293,75 @@ class StockGridWindow(gtk.Window):
             col = self.grid.get_column(0)
             self.grid.set_cursor (path, col, True)
 
+    def _get_selected_symbol (self):
+        sel = self.grid.get_selection ()
+        (model, iter) = sel.get_selected ()
+        if iter:
+            id = model.get_value(iter, 0)
+            s = db.store.get(Symbol, id)
+            return (s, model, iter)
+
+        return (None, None, None)
+
 
     def _on_remove_symbol (self, toolbutton, data):
-        sel = self.grid.get_selection ()
-        (model, iter) = sel.get_selected ()
+        (s, iter, model) = self._get_selected_symbol()
 
-        if iter:
-            id = model.get_value(iter, 0)
-            s = db.store.get(Symbol, id)
-            if id:
-                db.store.remove(p)
-                db.store.commit()
+        if s:
+            db.store.remove(s)
+            db.store.commit()
             model.remove(iter)
 
+    def _process_trade(self, trade):
+        print trade.symbol
+        print trade.symbol.amount
+        if not trade.symbol.amount:
+            trade.symbol.amount = 0
+        if trade.type == 'S':
+            trade.symbol.amount =  trade.symbol.amount - trade.amount
+        else:
+            trade.symbol.amount =  trade.symbol.amount + trade.amount
+
+        trade.portfolio = self.selected_portfolio
+        db.store.add(trade)
+        db.store.commit()
+
     def _on_sell_symbol(self, toolbutton, data):
-        sel = self.grid.get_selection ()
-        (model, iter) = sel.get_selected ()
+        (s, model, iter) = self._get_selected_symbol()
 
-        if iter:
-            id = model.get_value(iter, 0)
-            s = db.store.get(Symbol, id)
+        if s:
+            price = model.get_value(iter, 3)
+            dlg = TradeDialog(self, self.selected_portfolio, s, 'S', price)
+            dlg.show_all()
+            while (True):
+                if dlg.run() == gtk.RESPONSE_OK:
+                    if dlg.valid():
+                        trade = dlg.get_trade_object()
+                        self._process_trade(trade)
+                        break
+                else:
+                    break
 
-            if s:
-                dlg = TradeDialog(self, s, 'S')
-                dlg.show_all()
-                dlg.run()
-                dlg.destroy()
+            dlg.destroy()
 
     def _on_buy_symbol(self, toolbutton, data):
-        sel = self.grid.get_selection ()
-        (model, iter) = sel.get_selected ()
+        (s, model, iter) = self._get_selected_symbol()
 
-        if iter:
-            id = model.get_value(iter, 0)
-            s = db.store.get(Symbol, id)
+        if s:
+            price = model.get_value(iter, 3)
+            dlg = TradeDialog(self, self.selected_portfolio, s, 'B', price)
+            dlg.show_all()
 
-            if s:
-                dlg = TradeDialog(self, s, 'B')
-                dlg.show_all()
-                dlg.run()
-                dlg.destroy()
+            while (True):
+                if dlg.run() == gtk.RESPONSE_OK:
+                    if dlg.valid():
+                        trade = dlg.get_trade_object()
+                        self._process_trade(trade)
+                        break
+                else:
+                    break
 
+            dlg.destroy()
 
     def _build_symbol_toolbar (self):
 
