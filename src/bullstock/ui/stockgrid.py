@@ -32,6 +32,7 @@ from gettext import gettext as _
 from database import db
 from model import Portfolio, Symbol, Company
 from collector import collect
+from ui.trade_dialog import TradeDialog
 
 class _SymbolMonitor(Thread):
     class SymbolData:
@@ -212,7 +213,10 @@ class StockGridWindow(gtk.Window):
 
         frame = gtk.Frame (_("Trade Costs"))
         frame.set_shadow_type (gtk.SHADOW_NONE)
-        entry = gtk.SpinButton (None, 0.1, 2)
+        entry = gtk.SpinButton (None, 0.0, 2)
+        entry.set_increments(0.5, 1.0)
+        #TODO: get max float const
+        entry.set_range(0.0, 100000.0)
         frame.add (entry)
         dlg.vbox.pack_start (frame, False)
         dlg.portfolio_trade_cost = entry
@@ -301,6 +305,35 @@ class StockGridWindow(gtk.Window):
                 db.store.commit()
             model.remove(iter)
 
+    def _on_sell_symbol(self, toolbutton, data):
+        sel = self.grid.get_selection ()
+        (model, iter) = sel.get_selected ()
+
+        if iter:
+            id = model.get_value(iter, 0)
+            s = db.store.get(Symbol, id)
+
+            if s:
+                dlg = TradeDialog(self, s, 'S')
+                dlg.show_all()
+                dlg.run()
+                dlg.destroy()
+
+    def _on_buy_symbol(self, toolbutton, data):
+        sel = self.grid.get_selection ()
+        (model, iter) = sel.get_selected ()
+
+        if iter:
+            id = model.get_value(iter, 0)
+            s = db.store.get(Symbol, id)
+
+            if s:
+                dlg = TradeDialog(self, s, 'B')
+                dlg.show_all()
+                dlg.run()
+                dlg.destroy()
+
+
     def _build_symbol_toolbar (self):
 
         toolbar = gtk.Toolbar ()
@@ -323,8 +356,14 @@ class StockGridWindow(gtk.Window):
                                                    self._on_remove_symbol),
                         -1)
         toolbar.insert (gtk.SeparatorToolItem(), -1)
-        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REDO, _("Sell selected Symbol")), -1)
-        toolbar.insert (self._build_toolbar_button (gtk.STOCK_UNDO, _("Buy selected Symbol")), -1)
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REDO, 
+                                                    _("Sell selected Symbol"),
+                                                    self._on_sell_symbol),
+                        -1)
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_UNDO, 
+                                                    _("Buy selected Symbol"),
+                                                    self._on_buy_symbol),
+                        -1)
         toolbar.insert (gtk.SeparatorToolItem(), -1)
 
         item = gtk.ToolButton ()
@@ -379,13 +418,11 @@ class StockGridWindow(gtk.Window):
                 store.set_value (i, 8, 0.0)
 
     def _refresh_item (self, i, symbol):
-        print 'call refresh %s' % symbol.name
         store = self.grid.get_model ()
         store.set_value (i, 1, symbol.name)
         self.symbol_monitor.append(symbol, self._symbol_updated, i)
 
     def _on_cell_simbol_edited (self, cellrenderertext, path, new_text, data):
-        print 'Edited'
         store = self.grid.get_model ()
         i = store.get_iter (path)
         if i:
@@ -529,7 +566,6 @@ class StockGridWindow(gtk.Window):
             self._append_portfolio(p)
 
     def _hide_statusbar(self):
-        print 'HIDE status'
         self.progressbar.hide_all()
 
 gobject.type_register(StockGridWindow)
