@@ -96,10 +96,7 @@ class Yahoo(DataSource):
         page.close()
 
         for k, v in quote.items():
-            try:
-                quote[k] = self.quote_fmt[k][1](v.strip())
-            except:
-                quote[k] = 0
+            quote[k] = self.quote_fmt[k][1](v.strip())
 
         quote['timestamp'] = datetime.strptime("%s %s" % (quote['date'], quote['time']),
                 "%m/%d/%Y %I:%M%p")
