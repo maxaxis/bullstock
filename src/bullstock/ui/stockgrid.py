@@ -23,16 +23,105 @@
 import gobject
 import gtk
 import pango
+import time
+from threading import Thread
+from threading import Condition
 from decimal import Decimal as Dec
 from gettext import gettext as _
 
 from database import db
 from model import Portfolio, Symbol, Company
 
+class _SymbolMonitor(Thread):
+    class SymbolData:
+        def __init__(self, symbol, cb, data):
+            self.symbol = symbol
+            self.cb = cb
+            self.data = data
+
+    def __init__(self, timeout=5):
+        Thread.__init__(self)
+
+        self.sleep_function = None
+        self.symbols = []
+        self.running = False
+        self.timeout = timeout
+        self.started = False
+        self.cond = Condition()
+        self.idle_id = 0
+        self.timeout_id = 0
+
+    def _start(self):
+        self.running = True
+        if not self.started:
+            self.started = True
+            self.start()
+
+    def stop(self):
+        self.running = False
+        self.cond.acquire()
+        self.cond.notifyAll()
+        self.join()
+
+        if self.timeout_id:
+            gobject.source_remove(self.timeout_id)
+            self.timeout_id = 0
+
+        if self.idle_id:
+            gobject.source_remove(self.idle_id)
+            self.idle_id = 0
+
+    def set_timeout(self, timeout):
+        self.timeout = timeout
+
+    def get_timeout(self):
+        return self.timeout
+
+    def append(self, symbol, update_cb, data):
+        self.symbols.append(self.SymbolData(symbol, update_cb, data))
+        self._start()
+
+    def remove(self, symbol):
+        for sd in self.symbols:
+            if sd.symbol == symbol:
+                self.symbols.remove(sd)
+                break
+
+    def clear(self):
+        self.stop()
+        self.symbols = []
+
+    def set_sleep_function(self, sleep_func):
+        self.sleep_function = sleep_func
+
+    def run(self):
+        self.cond.acquire()
+        while self.running:
+            for sd in self.symbols:
+                q = sd.symbol.quote
+                gobject.idle_add(self._idle_emit_signal, sd, q)
+                if not self.running:
+                    break
+
+            self.idle_id = gobject.idle_add(self.sleep_function)
+            self.timeout_id = gobject.timeout_add(1000 * self.timeout, self._timeout_cb)
+            self.cond.wait()
+
+    def _timeout_cb(self):
+        self.cond.acquire()
+        self.timeout_id = 0
+        self.cond.notifyAll()
+        self.cond.release()
+
+    def _idle_emit_signal(self, symbol_data, q):
+        symbol_data.cb(symbol_data.symbol, q, symbol_data.data)
+
+
 class StockGridWindow(gtk.Window):
     def __init__(self, parent):
         super(StockGridWindow, self).__init__ (gtk.WINDOW_TOPLEVEL)
 
+        self.symbol_monitor = None
         self.set_transient_for(parent)
         self.tips = gtk.Tooltips()
         self.selected_portfolio = None
@@ -60,14 +149,32 @@ class StockGridWindow(gtk.Window):
         scroll.set_policy (gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         scroll.add (self.grid)
 
-        vbox = gtk.VBox (False, 5)
+        vbox = gtk.VBox(False, 5)
 
-        vbox.pack_start (self._build_symbol_toolbar (), False)
-        vbox.pack_start (scroll, True)
+        vbox.pack_start(self._build_symbol_toolbar (), False)
+        vbox.pack_start(scroll, True)
 
-        hpaned.pack2 (vbox, True, True)
+        hpaned.pack2(vbox, True, True)
 
-        self.add (hpaned)
+        vbox = gtk.VBox(False, 5)
+        vbox.pack_start(hpaned, True, True)
+
+        self.statusbar = gtk.HBox(False, 5)
+        self.statusbar.set_size_request(-1, 20)
+        self.progressbar = gtk.ProgressBar()
+        self.statusbar.pack_start(self.progressbar, False, True, 5)
+        self.statusbar.pack_start(gtk.Label(''), True, True, 5)
+        vbox.pack_start(self.statusbar, False, True, 5)
+
+        self.add(vbox)
+        self.show_all()
+        self.progressbar.hide_all()
+
+        self.connect('delete-event', self._on_delete_event)
+
+    def _on_delete_event(self, widget, event):
+        self.symbol_monitor.stop()
+        self.symbol_monitor.join()
 
     def _on_portfolio_changed(self, treeselection):
         (model, iter) = treeselection.get_selected()
@@ -78,7 +185,7 @@ class StockGridWindow(gtk.Window):
                 self._load_symbols(self.selected_portfolio)
 
     def _build_portfolio_dlg (self, id):
-        dlg = gtk.Dialog(_("Portfolio"), 
+        dlg = gtk.Dialog(_("Portfolio"),
                          self,
                          gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                          (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
@@ -249,9 +356,10 @@ class StockGridWindow(gtk.Window):
 
         return treeview
 
-    def _refresh_item (self, i, symbol):
+    def _symbol_updated(self, symbol, q, i):
+        self.progressbar.show_all()
+        self.progressbar.pulse()
 
-        q = symbol.quote
         if q:
             symbol.description  = unicode(q['name'])
             store = self.grid.get_model ()
@@ -264,6 +372,9 @@ class StockGridWindow(gtk.Window):
             store.set_value (i, 6, q['bid'])
             store.set_value (i, 7, q['ask'])
             store.set_value (i, 8, 0.0)
+
+    def _refresh_item (self, i, symbol):
+        self.symbol_monitor.append(symbol, self._symbol_updated, i)
 
     def _on_cell_simbol_edited (self, cellrenderertext, path, new_text, data):
 
@@ -391,6 +502,14 @@ class StockGridWindow(gtk.Window):
         return i
 
     def _load_symbols(self, portfolio):
+
+        #create symbol monitor
+        if self.symbol_monitor:
+            self.symbol_monitor.clear()
+
+        self.symbol_monitor = _SymbolMonitor()
+        self.symbol_monitor.set_sleep_function(self._hide_statusbar)
+
         self.grid.get_model().clear()
         for s in portfolio.symbols:
             i = self._append_symbol(s)
@@ -400,6 +519,10 @@ class StockGridWindow(gtk.Window):
         self.portfolio.get_model().clear()
         for p in db.store.find(Portfolio):
             self._append_portfolio(p)
+
+    def _hide_statusbar(self):
+        print 'Hide progressbar'
+        self.progressbar.hide_all()
 
 gobject.type_register(StockGridWindow)
 
