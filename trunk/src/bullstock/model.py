@@ -118,9 +118,6 @@ class Symbol(Storm):
     def quote(self):
         return collect.get_quote(self.datasource, self.name)
 
-    def get_quote(self):
-        return collect.get_quote(self.datasource, self.name)
-
     def get_history(self, start=None, end=None, type=u'd'):
         self.refresh_history(type)
 
