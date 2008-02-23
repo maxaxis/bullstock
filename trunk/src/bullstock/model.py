@@ -43,14 +43,17 @@ class Trade(Storm):
     portfolio_id = Int()
     portfolio = Reference(portfolio_id, "Portfolio.id")
 
-    def __init__(self, type, symbol, portfolio, amount, value, trade_cost, date=datetime.today()):
+    def __init__(self, type, symbol, portfolio, amount, value, trade_cost, date=None):
         self.type = type
         self.amount = amount
         self.value = value
         self.trade_cost = trade_cost
         self.symbol = symbol
         self.portfolio = portfolio
-        self.trade_date = date
+        if date is None:
+            self.trade_date = datetime.now()
+        else:
+            self.trade_date = date
 
 
 class FinancialInfo(Storm):
