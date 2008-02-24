@@ -92,7 +92,6 @@ class _Database(object):
             CREATE TABLE symbol (
                 id INTEGER PRIMARY KEY,
                 company_id INTEGER,
-                portfolio_id INTEGER,
                 amount INTEGER,
                 name TEXT,
                 description TEXT,

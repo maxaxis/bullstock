@@ -31,6 +31,7 @@ from ui.main import MainWindow
 class Application():
     def __init__(self):
         main_win = MainWindow()
+        main_win.maximize()
         main_win.show_all()
         main_win.connect('delete-event', self.on_delete_window)
 
