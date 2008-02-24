@@ -29,6 +29,7 @@ from ui.portfolio_list import PortfolioList
 from ui.symbol_grid import SymbolGrid
 from ui.portfolio_dialog import PortfolioDialog
 from ui.trade_dialog import TradeDialog
+from ui.transaction_list import TransactionList
 from model import Portfolio, Symbol
 from database import db
 
@@ -48,6 +49,9 @@ class MainWindow(gtk.Window):
         #symbol grid
         self.symbol_grid = SymbolGrid()
         self.symbol_grid.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+
+        #transaction list
+        self.transaction_list = TransactionList()
 
         #status bar
         self.statusbar = gtk.HBox(False, 0)
@@ -110,6 +114,12 @@ class MainWindow(gtk.Window):
                                                    None),
                         -1)
 
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_FIND_AND_REPLACE,
+                                                   _("List transactions"),
+                                                   self._on_list_transactions),
+                        -1)
+
+
         toolbar.insert (self._build_toolbar_button (gtk.STOCK_REFRESH, 
                                                    _("Refresh symbol values"),
                                                    None),
@@ -149,7 +159,12 @@ class MainWindow(gtk.Window):
 
         return toolbar
 
-    def _on_new_portfolio (self, toolbutton, data):
+    def _on_list_transactions(self, toolbutton, data):
+        self.details.remove(self.symbol_grid)
+        self.details.add(self.transaction_list)
+        self.transaction_list.show_all()
+
+    def _on_new_portfolio(self, toolbutton, data):
         dlg = PortfolioDialog(self)
         dlg.show_all()
         ret = dlg.run()
