@@ -33,9 +33,13 @@ class TradeDialog(gtk.Dialog):
         super (TradeDialog, self).__init__ (_('Trade'), parent)
         hbox = gtk.HBox(False, 5)
         self.set_resizable(False)
-        self.potfolio = portfolio
+        self.portfolio = portfolio
 
         self.calendar = gtk.Calendar()
+        today = datetime.today()
+        print today
+        self.calendar.select_month(today.month-1, today.year)
+        self.calendar.select_day(today.day)
         hbox.pack_start(self.calendar, False)
 
         vbox = gtk.VBox(True, 5)
@@ -150,13 +154,14 @@ class TradeDialog(gtk.Dialog):
         return False
 
     def get_trade_object(self):
+        (year, month, day) = self.calendar.get_date()
         return Trade(unicode(self.get_transaction_type()),
                      self.symbol,
                      self.portfolio,
                      self.number_entry.get_value(),
                      Dec(str(self.price_entry.get_value())),
                      Dec(str(self.cost_entry.get_value())),
-                     datetime(self.calendar.get_date()))
+                     datetime(year, month, day))
 
     def _update_sum(self):
         price = self.price_entry.get_value()
