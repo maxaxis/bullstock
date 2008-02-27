@@ -147,22 +147,29 @@ class SymbolGrid(gtk.ScrolledWindow):
     def __init__(self, hadjustment=None, vadjustment=None):
         super(SymbolGrid, self).__init__(hadjustment, vadjustment)
 
+        #get bullstock-watch portfolio
+        self.portfolio = db.store.get(Portfolio, 1)
+
         self.symbol_monitor = None
         self.treeview = self._build_treeview()
         self.add(self.treeview)
 
         self._init_config()
- 
+
         self.connect('delete-event', self._on_delete_event)
 
-    def load_from_db(self, portfolio):
+    def get_portfolio(self):
+        return self.portfolio
+
+    def load_from_db(self):
         if self.symbol_monitor:
             self.symbol_monitor.clear()
 
         self.symbol_monitor = _SymbolMonitor()
         self.treeview.get_model().clear()
 
-        for s in portfolio.symbols:
+        #load from bullstock-watch portfolio
+        for s in self.portfolio.symbols:
             self.append(s)
             self._refresh_item (self._find_iter(s), s)
 
@@ -215,7 +222,6 @@ class SymbolGrid(gtk.ScrolledWindow):
 
         table.attach(self._create_check_button(_('Symbol'), '/ColSymbol'), 0, 1, 0, 1)
         table.attach(self._create_check_button(_('Name'), '/ColName'), 0, 1, 1, 2)
-        table.attach(self._create_check_button(_('Amount'), '/ColAmount'), 0, 1, 2, 3)
         table.attach(self._create_check_button(_('Last'), '/ColLast'), 0, 1, 3, 4)
         table.attach(self._create_check_button(_('Percent'), '/ColPercent'), 0, 1, 4, 5)
 
@@ -244,7 +250,6 @@ class SymbolGrid(gtk.ScrolledWindow):
         if not self.gconf_client.dir_exists(self.GCONF_PATH):
             self.gconf_client.set_bool(self.GCONF_PATH + '/ColSymbol', True)
             self.gconf_client.set_bool(self.GCONF_PATH + '/ColName', True)
-            self.gconf_client.set_bool(self.GCONF_PATH + '/ColAmount', True)
             self.gconf_client.set_bool(self.GCONF_PATH + '/ColLast', True)
             self.gconf_client.set_bool(self.GCONF_PATH + '/ColPercent', True)
             self.gconf_client.set_bool(self.GCONF_PATH + '/ColBuyAmount', True)
@@ -256,27 +261,25 @@ class SymbolGrid(gtk.ScrolledWindow):
         self.gconf_client.notify_add(self.GCONF_PATH, self._gconf_value_changed)
         self._refresh_config()
 
-    def _set_col_visible(self, col, key):
+    def _set_col_visible(self, col_num, key):
         visible = self.gconf_client.get_bool(self.GCONF_PATH + '/' + key)
-        col = self.treeview.get_column(col)
+        col = self.treeview.get_column(col_num)
         col.set_visible(visible)
 
     def _refresh_config(self):
         self._set_col_visible(0, 'ColSymbol')
         self._set_col_visible(1, 'ColName')
-        self._set_col_visible(2, 'ColAmount')
-        self._set_col_visible(3, 'ColLast')
-        self._set_col_visible(4, 'ColPercent')
-        self._set_col_visible(5, 'ColBuyAmount')
-        self._set_col_visible(6, 'ColBuyValue')
-        self._set_col_visible(7, 'ColSellValue')
-        self._set_col_visible(8, 'ColSellAmount')
+        self._set_col_visible(2, 'ColLast')
+        self._set_col_visible(3, 'ColPercent')
+        self._set_col_visible(4, 'ColBuyAmount')
+        self._set_col_visible(5, 'ColBuyValue')
+        self._set_col_visible(6, 'ColSellValue')
+        self._set_col_visible(7, 'ColSellAmount')
 
     def _fill_iter(self, i, symbol):
         store = self.treeview.get_model ()
         store.set_value (i, 1, symbol.name)
         store.set_value (i, 2, symbol.description)
-        store.set_value (i, 9, symbol.amount)
 
     def _find_iter(self, symbol):
         iter = self.treeview.get_model().get_iter_first()
@@ -293,6 +296,7 @@ class SymbolGrid(gtk.ScrolledWindow):
 
     def _symbol_updated(self, symbol, q, i):
         if q:
+            symbol._quote = q
             #update symbol name
             if symbol.description != unicode(q['name']):
                 symbol.description = unicode(q['name'])
@@ -329,16 +333,15 @@ class SymbolGrid(gtk.ScrolledWindow):
 
 
     def _build_treeview(self):
-        model = gtk.ListStore(gobject.TYPE_INT,
-                              gobject.TYPE_STRING,
-                              gobject.TYPE_STRING,
-                              gobject.TYPE_DOUBLE,
-                              gobject.TYPE_DOUBLE,
-                              gobject.TYPE_STRING,
-                              gobject.TYPE_DOUBLE,
-                              gobject.TYPE_DOUBLE,
-                              gobject.TYPE_STRING,
-                              gobject.TYPE_INT)
+        model = gtk.ListStore(gobject.TYPE_INT,         #symbol.id
+                              gobject.TYPE_STRING,      #symbol.name
+                              gobject.TYPE_STRING,      #symbol.description
+                              gobject.TYPE_DOUBLE,      #symbol.last_value
+                              gobject.TYPE_DOUBLE,      #percent
+                              gobject.TYPE_STRING,      #sell amount
+                              gobject.TYPE_DOUBLE,      #sell value
+                              gobject.TYPE_DOUBLE,      #buy value
+                              gobject.TYPE_STRING)      #buy amount
         treeview = gtk.TreeView(model)
 
 
@@ -359,14 +362,6 @@ class SymbolGrid(gtk.ScrolledWindow):
         cell = gtk.CellRendererText ()
         col.pack_start (cell, False)
         col.add_attribute (cell, 'text', 2)
-
-        #col Amount
-        col = gtk.TreeViewColumn (_('Amount'))
-        col.set_min_width (100)
-        treeview.append_column (col)
-        cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
-        col.add_attribute (cell, 'text', 9)
 
         #col val
         col = gtk.TreeViewColumn (_("Last"))

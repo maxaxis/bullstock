@@ -37,6 +37,10 @@ class Trade(Storm):
     value = Decimal()
     trade_cost = Decimal()
     trade_date = DateTime()
+
+    #used on sells to associate with buy
+    parent_id = Int()
+
     # FK
     symbol_id = Int()
     symbol = Reference(symbol_id, "Symbol.id")
@@ -86,22 +90,23 @@ class Portfolio(Storm):
 class Symbol(Storm):
     __storm_table__ = "symbol"
 
+    _quote = None
     id = Int(primary=True)
     name = Unicode()
     description = Unicode()
     datasource = Unicode()
-    amount = Int()
     # FK
     company_id = Int()
     company = Reference(company_id, "Company.id")
 
-    def __init__(self, name, datasource, description=u""):
+    def __init__(self, name, datasource, quote=None, description=u""):
         self.name = name
         self.amount = 0
         self.datasource = datasource
+        self._quote = quote
 
         q = self.quote
-        print q
+        self._quote = q
 
         full_name = unicode(self.quote['name'])
         striped_name = unicode(re.sub(" +-[A-Z]*$", "", full_name).strip())
@@ -125,7 +130,14 @@ class Symbol(Storm):
 
     @property
     def quote(self):
-        return collect.get_quote(self.datasource, self.name)
+        if not self._quote:
+            self.refresh()
+        
+        print self._quote
+        return self._quote
+
+    def refresh(self):
+        self._quote = collect.get_quote(self.datasource, self.name)
 
     def get_history(self, start=None, end=None, type=u'd'):
         self.refresh_history(type)
@@ -212,6 +224,7 @@ class History(Storm):
     # FK
     symbol_id = Int()
     symbol = Reference(symbol_id, "Symbol.id")
+
 
     def __init__(self, symbol, timestamp, open, high, low, close, volume, type):
         self.symbol = symbol

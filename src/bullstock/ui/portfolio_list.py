@@ -42,8 +42,8 @@ class PortfolioList(gtk.ScrolledWindow):
 
     def load_from_db(self):
         self.treeview.get_model().clear()
-
-        for p in db.store.find(Portfolio):
+        #skip watch list
+        for p in db.store.find(Portfolio, Portfolio.id != 1):
             self.append(p)
 
     def append(self, portfolio):
