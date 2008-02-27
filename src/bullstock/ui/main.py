@@ -131,8 +131,6 @@ class MainWindow(gtk.Window):
                                                     self._on_buy_symbol),
                         -1)
 
-
-
         return toolbar
 
 
