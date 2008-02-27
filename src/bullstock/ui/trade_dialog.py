@@ -39,6 +39,8 @@ class TradeDialog(gtk.Dialog):
 
         if portfolio and symbol:
             self.valid = True
+        else:
+            self.valid = False
 
         self.calendar = gtk.Calendar()
         today = datetime.today()
