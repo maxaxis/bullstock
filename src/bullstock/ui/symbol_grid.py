@@ -118,12 +118,15 @@ class _SymbolMonitor(Thread):
         self.cond.acquire()
         while self.running:
             for sd in self.symbols:
-                q = collect.get_quote(sd.datasource, sd.symbol_name)
+                try:
+                    q = collect.get_quote(sd.datasource, sd.symbol_name)
+                except:
+                    q = None
+
                 if self.running:
                     gobject.idle_add(self._idle_emit_signal, sd, q)
                 else:
                     break
-
 
             if self.sleep_function:
                 self.idle_id = gobject.idle_add(self.sleep_function)
@@ -296,15 +299,16 @@ class SymbolGrid(gtk.ScrolledWindow):
 
     def _symbol_updated(self, symbol, q, i):
         if q:
-            symbol._quote = q
+            symbol.refresh(q)
             #update symbol name
             if symbol.description != unicode(q['name']):
                 symbol.description = unicode(q['name'])
                 db.store.commit()
 
-            store = self.treeview.get_model ()
-            if store:
-                store.set_value (i, 1, symbol.name)
+        store = self.treeview.get_model ()
+        if store:
+            store.set_value (i, 1, symbol.name)
+            if q:
                 store.set_value (i, 2, symbol.description)
                 store.set_value (i, 3, q['last_trade'])
                 store.set_value (i, 4, q['change_percent'])
@@ -313,6 +317,14 @@ class SymbolGrid(gtk.ScrolledWindow):
                     store.set_value (i, 6, q['bid'])
                 store.set_value (i, 7, q['ask'])
                 store.set_value (i, 8, 0.0)
+            else:
+                store.set_value (i, 2, 'N/A')
+                store.set_value (i, 3, 0.00)
+                store.set_value (i, 4, 0.00)
+                store.set_value (i, 5, 0.00)
+                store.set_value (i, 6, 0.00)
+                store.set_value (i, 7, 0.00)
+                store.set_value (i, 8, 0.00)
 
     def _refresh_item (self, i, symbol):
         store = self.treeview.get_model()
@@ -326,9 +338,9 @@ class SymbolGrid(gtk.ScrolledWindow):
             id = store.get_value(i, 0)
             symbol = db.store.get(Symbol, id)
             if symbol:
-               symbol.name = unicode(new_text.upper())
                db.store.commit()
                store.set_value(i, 2, _('Refreshing...'))
+               symbol.name = unicode(new_text.upper())
                self._refresh_item (i, symbol)
 
 
