@@ -29,7 +29,7 @@ from ui.portfolio_list import PortfolioList
 from ui.symbol_grid import SymbolGrid
 from ui.portfolio_dialog import PortfolioDialog
 from ui.trade_dialog import TradeDialog
-from ui.transaction_list import TransactionList
+from ui.trade_list import TradeList
 from model import Portfolio, Symbol
 from database import db
 
@@ -39,6 +39,12 @@ class MainWindow(gtk.Window):
 
         self.tips = gtk.Tooltips()
 
+        #symbol grid (Watch List)
+        self.symbol_grid = SymbolGrid()
+        self.symbol_grid.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.symbol_grid.load_from_db()
+
+
         #portfolio list
         self.portfolio_list = PortfolioList()
         self.portfolio_list.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -46,12 +52,9 @@ class MainWindow(gtk.Window):
         self.portfolio_list.connect('selection-changed',
                                     self._on_portfolio_changed)
 
-        #symbol grid
-        self.symbol_grid = SymbolGrid()
+        #trade list
+        self.trade_list = TradeList()
         self.symbol_grid.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-
-        #transaction list
-        self.transaction_list = TransactionList()
 
         #status bar
         self.statusbar = gtk.HBox(False, 0)
@@ -61,28 +64,37 @@ class MainWindow(gtk.Window):
         self.statusbar.pack_start(gtk.Label(''), True, True, 0)
 
         #layout
-        toolbar = self._build_toolbar()
+        main_box = gtk.VBox(False, 5)
+        vpaned = gtk.VPaned()
+
         vbox = gtk.VBox(False, 5)
+        toolbar = self._build_watch_toolbar()
+        vbox.pack_start(toolbar, False)
+        vbox.pack_start(self.symbol_grid, True)
+        vpaned.pack1(vbox, True, True)
+
+        vbox = gtk.VBox(False, 5)
+        toolbar = self._build_portfolio_toolbar()
         vbox.pack_start(toolbar, False)
 
         hpaned = gtk.HPaned()
         hpaned.set_position(35)
         vbox.pack_start(hpaned, True)
 
-        vbox.pack_start(self.statusbar, False, True, 5)
-
-        self.details = gtk.EventBox()
         hpaned.pack1(self.portfolio_list, True, True)
-        hpaned.pack2(self.details, True, True)
+        hpaned.pack2(self.trade_list, True, True)
 
-        self.details.add(self.symbol_grid)
+        vpaned.pack2(vbox, True, True)
 
-        self.add(vbox)
+        main_box.pack_start(vpaned, True, True)
+        main_box.pack_start(self.statusbar, False, True)
+
+        self.add(main_box)
 
     def _on_portfolio_changed(self, portfolio):
         p = self.portfolio_list.get_selected()
         if p:
-            self.symbol_grid.load_from_db(p)
+            self.trade_list.refresh(p)
 
     def _build_toolbar_button (self, stock, tip, cb=None):
         item = gtk.ToolButton(stock)
@@ -92,40 +104,8 @@ class MainWindow(gtk.Window):
 
         return item
 
-
-    def _build_toolbar(self):
+    def _build_watch_toolbar(self):
         toolbar = gtk.Toolbar ()
-
-
-        #portfolio control
-        toolbar.insert (self._build_toolbar_button (gtk.STOCK_ADD,
-                                                   _("Add new portfolio"),
-                                                   self._on_new_portfolio),
-                        -1)
-        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REMOVE,
-                                                   _("Remove selected portfolio"),
-                                                   self._on_remove_protfolio),
-                        -1)
-
-        toolbar.insert (gtk.SeparatorToolItem(), -1)
-
-        toolbar.insert (self._build_toolbar_button (gtk.STOCK_PREFERENCES, 
-                                                   _("Configure portfolio"),
-                                                   None),
-                        -1)
-
-        toolbar.insert (self._build_toolbar_button (gtk.STOCK_FIND_AND_REPLACE,
-                                                   _("List transactions"),
-                                                   self._on_list_transactions),
-                        -1)
-
-
-        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REFRESH, 
-                                                   _("Refresh symbol values"),
-                                                   None),
-                        -1)
-
-        toolbar.insert (gtk.SeparatorToolItem(), -1)
 
         #symbol control
         toolbar.insert (self._build_toolbar_button (gtk.STOCK_PREFERENCES,
@@ -146,22 +126,58 @@ class MainWindow(gtk.Window):
 
         toolbar.insert (gtk.SeparatorToolItem(), -1)
 
-        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REDO,
-                                                    _("Sell selected Symbol"),
-                                                    self._on_sell_symbol),
-                        -1)
         toolbar.insert (self._build_toolbar_button (gtk.STOCK_UNDO,
                                                     _("Buy selected Symbol"),
                                                     self._on_buy_symbol),
                         -1)
 
+
+
+        return toolbar
+
+
+
+    def _build_portfolio_toolbar(self):
+        toolbar = gtk.Toolbar ()
+
+
+        #portfolio control
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_ADD,
+                                                   _("Add new portfolio"),
+                                                   self._on_new_portfolio),
+                        -1)
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REMOVE,
+                                                   _("Remove selected portfolio"),
+                                                   self._on_remove_protfolio),
+                        -1)
+
+        toolbar.insert (gtk.SeparatorToolItem(), -1)
+
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_PREFERENCES, 
+                                                   _("Configure portfolio"),
+                                                   None),
+                        -1)
+
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REFRESH, 
+                                                   _("Refresh symbol values"),
+                                                   None),
+                        -1)
+
+        toolbar.insert (gtk.SeparatorToolItem(), -1)
+
+        #symbol control
+        toolbar.insert (self._build_toolbar_button (gtk.STOCK_REDO,
+                                                    _("Sell selected Symbol"),
+                                                    self._on_sell_symbol),
+                        -1)
         toolbar.insert (gtk.SeparatorToolItem(), -1)
 
         return toolbar
 
     def _on_list_transactions(self, toolbutton, data):
-        self.details.remove(self.symbol_grid)
-        self.details.add(self.transaction_list)
+        ##self.details.remove(self.symbol_grid)
+        ##self.details.add(self.transaction_list)
+        pass
         self.transaction_list.show_all()
 
     def _on_new_portfolio(self, toolbutton, data):
@@ -191,7 +207,7 @@ class MainWindow(gtk.Window):
         dlg.destroy()
 
     def _on_new_symbol(self, toolbutton, data):
-        p = self.portfolio_list.get_selected()
+        p = self.symbol_grid.get_portfolio()
         if p:
             symbol = Symbol(u'GOOG', u'yahoo')
             db.store.add(symbol)
@@ -212,33 +228,40 @@ class MainWindow(gtk.Window):
             self._show_message(_('You need select a symbol to perform this operation.'))
 
     def _process_trade(self, trade):
-        if not trade.symbol.amount:
-            trade.symbol.amount = 0
-        if trade.type == 'S':
-            trade.symbol.amount =  trade.symbol.amount - trade.amount
-        else:
-            trade.symbol.amount =  trade.symbol.amount + trade.amount
-
         db.store.add(trade)
         db.store.commit()
-        self.symbol_grid.update(trade.symbol)
+        print "Trade Id %d" % trade.portfolio.id
+        self.trade_list.refresh(trade.portfolio)
 
-    def _create_trade_dialog(self, symbol, type):
+    def _create_trade_dialog(self, symbol, type, parent=None):
         #TODO: use cached value
         p = self.portfolio_list.get_selected()
-        if not p:
+        if type == 'S' and not p:
             return
 
-        price = symbol.quote['last_trade']
+        if symbol:
+            price = symbol.quote['last_trade']
+        else:
+            price = 0
+
         dlg = TradeDialog(self, p, symbol, type, price)
         dlg.show_all()
         while (True):
             if dlg.run() == gtk.RESPONSE_OK:
-                if dlg.valid():
-                    trade = dlg.get_trade_object()
-                    trade.portfolio = p
-                    self._process_trade(trade)
-                    break
+                if not dlg.validate():
+                    continue
+
+                print 'Trade Valid'
+                trade = dlg.get_trade_object()
+                print 'Trade obj'
+                print trade
+                if parent:
+                    if parent.amount >= trade.amount:
+                        trade.parent_id = parent.id
+                    else:
+                        continue
+                self._process_trade(trade)
+                break
             else:
                 break
 
@@ -246,18 +269,15 @@ class MainWindow(gtk.Window):
 
 
     def _on_sell_symbol(self, toolbutton, data):
-        s = self.symbol_grid.get_selected()
-        if s:
-            self._create_trade_dialog(s, 'S')
+        t = self.trade_list.get_selected()
+        if t:
+            self._create_trade_dialog(t.symbol, 'S', t)
         else:
-            self._show_message(_('You need select a symbol to perform this operation.'))
+            self._show_message(_('You need select a symbol from the portfolio to perform this operation.'))
 
     def _on_buy_symbol(self, toolbutton, data):
         s = self.symbol_grid.get_selected()
-        if s:
-            self._create_trade_dialog(s, 'B')
-        else:
-            self._show_message(_('You need select a symbol to perform this operation.'))
+        self._create_trade_dialog(s, 'B')
 
     def _show_message(self, caption):
         msg = gtk.MessageDialog(self,

@@ -40,7 +40,14 @@ class _Database(object):
 
         if not db_exists:
             self._create_tables()
+            self._insert_default_values()
 
+    def _insert_default_values(self):
+        self.store.execute("""
+            INSERT INTO portfolio (name, transaction_cost)
+            VALUES ('bullstock-watch', 0.00)
+            """, noresult=True)
+        self.store.commit()
 
     def _create_tables(self):
         print 'Initialize Database: %s' % (self.filename,)
@@ -52,6 +59,7 @@ class _Database(object):
         self.store.execute("""
             CREATE TABLE trade (
                 id INTEGER PRIMARY KEY,
+                parent_id INTEGER,
                 symbol_id INTEGER,
                 portfolio_id INTEGER,
                 type TEXT,
@@ -92,7 +100,6 @@ class _Database(object):
             CREATE TABLE symbol (
                 id INTEGER PRIMARY KEY,
                 company_id INTEGER,
-                amount INTEGER,
                 name TEXT,
                 description TEXT,
                 datasource TEXT
