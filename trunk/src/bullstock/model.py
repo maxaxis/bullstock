@@ -132,12 +132,13 @@ class Symbol(Storm):
     def quote(self):
         if not self._quote:
             self.refresh()
-        
-        print self._quote
         return self._quote
 
-    def refresh(self):
-        self._quote = collect.get_quote(self.datasource, self.name)
+    def refresh(self, quote=None):
+        if not quote:
+            self._quote = collect.get_quote(self.datasource, self.name)
+        else:
+            self._quote = quote
 
     def get_history(self, start=None, end=None, type=u'd'):
         self.refresh_history(type)

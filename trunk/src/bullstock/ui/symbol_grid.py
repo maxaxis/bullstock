@@ -45,6 +45,7 @@ class _SymbolMonitor(Thread):
     def __init__(self, timeout=5):
         Thread.__init__(self)
 
+        self.paused = False
         self.sleep_function = None
         self.symbols = []
         self.running = False
@@ -98,7 +99,9 @@ class _SymbolMonitor(Thread):
         self.symbols = []
 
     def pause(self):
+        self.paused = True
         self.cond.acquire()
+        self.paused = False
         if self.timeout_id:
             gobject.source_remove(self.timeout_id)
             self.timeout_id = 0
@@ -123,15 +126,16 @@ class _SymbolMonitor(Thread):
                 except:
                     q = None
 
-                if self.running:
+                if not self.paused and self.running:
                     gobject.idle_add(self._idle_emit_signal, sd, q)
                 else:
                     break
 
-            if self.sleep_function:
-                self.idle_id = gobject.idle_add(self.sleep_function)
-            if self.running:
-                self.timeout_id = gobject.timeout_add(1000 * self.timeout, self._timeout_cb)
+            if not self.paused:
+                if self.sleep_function:
+                    self.idle_id = gobject.idle_add(self.sleep_function)
+                if self.running:
+                    self.timeout_id = gobject.timeout_add(1000 * self.timeout, self._timeout_cb)
 
             self.cond.wait()
 
@@ -310,12 +314,12 @@ class SymbolGrid(gtk.ScrolledWindow):
             store.set_value (i, 1, symbol.name)
             if q:
                 store.set_value (i, 2, symbol.description)
-                store.set_value (i, 3, q['last_trade'])
-                store.set_value (i, 4, q['change_percent'])
+                store.set_value (i, 3, self._float_format(float(q['last_trade'])))
+                store.set_value (i, 4, self._float_to_percent(q['change_percent']))
                 store.set_value (i, 5, 0.0)
                 if q['bid']:
-                    store.set_value (i, 6, q['bid'])
-                store.set_value (i, 7, q['ask'])
+                    store.set_value (i, 6, self._float_format(q['bid']))
+                store.set_value (i, 7, self._float_format (q['ask']))
                 store.set_value (i, 8, 0.0)
             else:
                 store.set_value (i, 2, 'N/A')
@@ -331,7 +335,17 @@ class SymbolGrid(gtk.ScrolledWindow):
         store.set_value (i, 1, symbol.name)
         self.symbol_monitor.append(symbol, self._symbol_updated, i)
 
-    def _on_cell_simbol_edited (self, cellrenderertext, path, new_text, data):
+    def _on_cell_simbol_start_edit (self, cellrenderertext, editable, path):
+        store = self.treeview.get_model ()
+        i = store.get_iter (path)
+        if i:
+            id = store.get_value(i, 0)
+            symbol = db.store.get(Symbol, id)
+            if symbol:
+                self.symbol_monitor.remove(symbol)
+
+
+    def _on_cell_simbol_edited (self, cellrenderertext, path, new_text):
         store = self.treeview.get_model ()
         i = store.get_iter (path)
         if i:
@@ -343,16 +357,21 @@ class SymbolGrid(gtk.ScrolledWindow):
                symbol.name = unicode(new_text.upper())
                self._refresh_item (i, symbol)
 
+    def _float_format(self, val):
+        return '%5.02f' % float(val)
+
+    def _float_to_percent(self, val):
+        return '%5.2f%%' % val
 
     def _build_treeview(self):
         model = gtk.ListStore(gobject.TYPE_INT,         #symbol.id
                               gobject.TYPE_STRING,      #symbol.name
                               gobject.TYPE_STRING,      #symbol.description
-                              gobject.TYPE_DOUBLE,      #symbol.last_value
-                              gobject.TYPE_DOUBLE,      #percent
+                              gobject.TYPE_STRING,      #symbol.last_value
+                              gobject.TYPE_STRING,      #percent
                               gobject.TYPE_STRING,      #sell amount
-                              gobject.TYPE_DOUBLE,      #sell value
-                              gobject.TYPE_DOUBLE,      #buy value
+                              gobject.TYPE_STRING,      #sell value
+                              gobject.TYPE_STRING,      #buy value
                               gobject.TYPE_STRING)      #buy amount
         treeview = gtk.TreeView(model)
 
@@ -365,7 +384,8 @@ class SymbolGrid(gtk.ScrolledWindow):
         cell.set_property ('editable', True)
         col.pack_start (cell, False)
         col.add_attribute (cell, 'text', 1)
-        cell.connect ('edited', self._on_cell_simbol_edited, None)
+        cell.connect ('editing-started', self._on_cell_simbol_start_edit)
+        cell.connect ('edited', self._on_cell_simbol_edited)
 
         #col name
         col = gtk.TreeViewColumn (_("Name"))
