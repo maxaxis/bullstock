@@ -22,7 +22,6 @@
 
 import gobject
 import gtk
-import pango
 
 from database import db
 from model import Portfolio
@@ -102,7 +101,7 @@ class PortfolioList(gtk.ScrolledWindow):
         col.set_alignment(1.0)
         cell = gtk.CellRendererText()
         col.pack_start(cell, True)
-        cell.set_property('alignment', pango.ALIGN_RIGHT)
+        cell.set_property('xalign', 1.0)
         col.add_attribute(cell, 'text', 2)
         treeview.append_column(col)
 

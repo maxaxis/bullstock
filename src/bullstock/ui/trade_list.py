@@ -68,7 +68,7 @@ class TradeList(gtk.ScrolledWindow):
 
     def _update_trade(self, buy_trade):
         #TODO: this is very slow 
-        trades = db.store.find(Trade, Trade.type==u'S', Trade.parent_id == buy_trade.id)
+        trades = db.store.find(Trade, Trade.parent_id == buy_trade.id, Trade.type==u'S')
         total = 0
         qnt = buy_trade.amount
         for st in trades:
@@ -80,7 +80,7 @@ class TradeList(gtk.ScrolledWindow):
     def _load_from_db(self, portfolio):
         self.treeview.get_model().clear()
 
-        btrades = db.store.find(Trade, Trade.type==u'B', Trade.portfolio_id == portfolio.id)
+        btrades = db.store.find(Trade, Trade.portfolio_id == portfolio.id, Trade.type==u'B')
         for bt in btrades:
             print bt.id
             (qnt, total) = self._update_trade(bt)
@@ -90,18 +90,18 @@ class TradeList(gtk.ScrolledWindow):
     def _update_iter(self, iter, trade, qnt, total):
         store = self.treeview.get_model ()
         store.set_value(iter, 3, qnt)
-        store.set_value(iter, 6, qnt * trade.value)
-        store.set_value(iter, 7, total)
+        store.set_value(iter, 6, self._float_format(qnt * trade.value))
+        store.set_value(iter, 7, self._float_format(total))
         store.set_value(iter, 8, 0.0) #TODO
 
     def _append(self, trade, qnt, total):
         store = self.treeview.get_model ()
         i = store.append()
         store.set_value(i, 0, trade.id)
-        store.set_value(i, 1, trade.symbol.name)
-        store.set_value(i, 2, trade.symbol.description)
-        store.set_value(i, 4, trade.value)
-        store.set_value(i, 5, trade.symbol.quote['last_trade'])
+        store.set_value(i, 1, trade.symbol.name.upper())
+        store.set_value(i, 2, trade.symbol.description.upper())
+        store.set_value(i, 4, self._float_format(trade.value))
+        store.set_value(i, 5, self._float_format(trade.symbol.quote['last_trade']))
         self._update_iter(i, trade, qnt, total)
 
     def _find_iter(self, trade):
@@ -114,17 +114,22 @@ class TradeList(gtk.ScrolledWindow):
 
         return None
 
+    def _float_format(self, val):
+        return '%5.02f' % float(val)
+
+    def _float_to_percent(self, val):
+        return '%5.2f%%' % val
 
     def _build_treeview(self):
         model = gtk.ListStore(gobject.TYPE_INT,     #trade_id
                               gobject.TYPE_STRING,  #symbol name
                               gobject.TYPE_STRING,  #symbol desc
                               gobject.TYPE_INT,     #amount
-                              gobject.TYPE_DOUBLE,  #buy value
-                              gobject.TYPE_DOUBLE,  #current value
-                              gobject.TYPE_DOUBLE,  #total buy
-                              gobject.TYPE_DOUBLE,  #overall
-                              gobject.TYPE_DOUBLE)  #overall %
+                              gobject.TYPE_STRING,  #buy value
+                              gobject.TYPE_STRING,  #current value
+                              gobject.TYPE_STRING,  #total buy
+                              gobject.TYPE_STRING,  #overall
+                              gobject.TYPE_STRING)  #overall %
         treeview = gtk.TreeView(model)
 
 
@@ -133,7 +138,7 @@ class TradeList(gtk.ScrolledWindow):
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
+        col.pack_start (cell, True)
         col.add_attribute (cell, 'text', 1)
 
         #col name
@@ -141,7 +146,7 @@ class TradeList(gtk.ScrolledWindow):
         col.set_min_width (200)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
+        col.pack_start (cell, True)
         col.add_attribute (cell, 'text', 2)
 
         #col Amount
@@ -149,7 +154,8 @@ class TradeList(gtk.ScrolledWindow):
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
+        cell.set_property('xalign', 1.0)
+        col.pack_start (cell, True)
         col.add_attribute (cell, 'text', 3)
 
         #col buy val
@@ -157,7 +163,8 @@ class TradeList(gtk.ScrolledWindow):
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
+        cell.set_property('xalign', 1.0)
+        col.pack_start (cell, True)
         col.add_attribute (cell, 'text', 4)
 
         #col current val
@@ -165,7 +172,8 @@ class TradeList(gtk.ScrolledWindow):
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
+        cell.set_property('xalign', 1.0)
+        col.pack_start (cell, True)
         col.add_attribute (cell, 'text', 5)
 
         #col Total Buy
@@ -173,7 +181,8 @@ class TradeList(gtk.ScrolledWindow):
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
+        cell.set_property('xalign', 1.0)
+        col.pack_start (cell, True)
         col.add_attribute (cell, 'text', 6)
 
         #col Overall
@@ -181,15 +190,18 @@ class TradeList(gtk.ScrolledWindow):
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
+        cell.set_property('xalign', 1.0)
+        col.pack_start (cell, True)
         col.add_attribute (cell, 'text', 7)
 
         #col Overall %
         col = gtk.TreeViewColumn (_("Overall %"))
+        col.set_alignment(1.0)
         col.set_min_width (100)
         treeview.append_column (col)
         cell = gtk.CellRendererText ()
-        col.pack_start (cell, False)
+        cell.set_property('xalign', 1.0)
+        col.pack_start (cell, True)
         col.add_attribute (cell, 'text', 8)
 
         return treeview

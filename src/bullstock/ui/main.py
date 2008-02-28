@@ -228,7 +228,6 @@ class MainWindow(gtk.Window):
     def _process_trade(self, trade):
         db.store.add(trade)
         db.store.commit()
-        print "Trade Id %d" % trade.portfolio.id
         self.trade_list.refresh(trade.portfolio)
 
     def _create_trade_dialog(self, symbol, type, parent=None):
@@ -249,10 +248,7 @@ class MainWindow(gtk.Window):
                 if not dlg.validate():
                     continue
 
-                print 'Trade Valid'
                 trade = dlg.get_trade_object()
-                print 'Trade obj'
-                print trade
                 if parent:
                     if parent.amount >= trade.amount:
                         trade.parent_id = parent.id
