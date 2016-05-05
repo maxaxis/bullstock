@@ -1,0 +1,1 @@
+Bullstock is a tool for market observation and an analisys tool. It uses Yahoo! Finance to get informations, draw graphics and make some technical analilsys like candlestick.
